@@ -38,8 +38,10 @@ export function offsets() { return pattern; }
 export function isTrotting() { return trotting; }
 
 // How much of the stride a foot spends on the ground. A walk keeps each foot
-// down for well over half the cycle, which is what puts three feet on the
-// ground at almost every moment. A trot has to be under a half or the two
+// down for well over half the cycle; at the default of 0.70 that is mostly
+// three feet down, and winding it towards 0.55 walks it down to two — the feet
+// counter above the stage is reading the pose, not this comment. A trot has to
+// be under a half or the two
 // diagonal pairs would never both be off the ground, and the airborne moment
 // between them is the whole difference between the two gaits.
 export function stance() {

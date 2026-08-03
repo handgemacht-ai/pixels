@@ -9,8 +9,8 @@ There are two animations:
 
 - [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
   over, once in JavaScript and once in fragment shaders.
-- [`animations/dog-walk`](animations/dog-walk) — a pixel-art dog whose walk is solved from an
-  internal skeleton, held against a Muybridge plate from 1887.
+- [`animations/dog-walk`](animations/dog-walk) — a pixel-art mastiff whose walk is solved from an
+  internal skeleton, held frame for frame against Muybridge's plate 706 of 1887.
 
 ![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
 
