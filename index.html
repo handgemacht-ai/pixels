@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Procedural Pixel-Art Explosion</title>
+<link rel="stylesheet" href="css/styles.css">
+<script
+  src="https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.js"
+  integrity="sha384-brfu63ZHzOfumoqQXzA4Wo7k9kQOaJ68C/E7+Uc8lgQB42dOOjA+urOyy/sOnKPq"
+  crossorigin="anonymous"></script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Procedural pixel-art explosion</h1>
+      <p>PixiJS 8 &middot; 160 &times; 100 pixels &middot; eight colours &middot; all generated at runtime</p>
+    </div>
+  </div>
+  <button id="detonate" type="button">Detonate</button>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <span class="tag live">live</span>
+      <span class="name">preview</span>
+      <span class="meta">click the canvas &middot; auto-replays every 5.2s unless the knobs say otherwise</span>
+    </div>
+    <div class="stage" id="stage">
+      <p id="error" hidden></p>
+    </div>
+    <p class="legend">flash &middot; spikes &middot; rolling fireball &middot; shadowed hollow &middot; break-up &middot; torn smoke &middot; grit &middot; ground dust</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="tag">sheet</span>
+      <span class="name">reference-sheet.png</span>
+      <span class="meta" id="sheet-meta">frame 1 / 50 &middot; 12 fps</span>
+    </div>
+    <div class="ref">
+      <canvas id="sheet-canvas" width="160" height="100" aria-label="The sprite sheet played back a frame at a time, restarted by every detonation"></canvas>
+    </div>
+    <div class="swatches" id="swatches" title="the eight colours of the sprite sheet"></div>
+    <p class="legend">both sides run at the same cadence &middot; restarts on every blast</p>
+  </section>
+
+  <section class="panel wide">
+    <div class="panel-head">
+      <span class="tag">stats</span>
+      <span class="name">performance</span>
+      <span class="meta">read four times a second</span>
+      <div class="modes" id="modes" role="group" aria-label="Where each frame is drawn"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="stats" id="stats-env"></div>
+    <p class="legend" id="mode-note">no browser reports GPU load, VRAM or driver queue depth &mdash; these are the numbers a page can actually read</p>
+  </section>
+
+  <section class="panel wide">
+    <details class="controls" id="controls">
+      <summary class="panel-head">
+        <span class="chev" aria-hidden="true">&#9656;</span>
+        <span class="tag">knobs</span>
+        <span class="name">controls</span>
+        <span class="meta">seventeen parameters &middot; click to open</span>
+      </summary>
+      <div class="control-body">
+        <div class="control-groups" id="control-groups"></div>
+        <div class="control-foot">
+          <button id="reset-params" type="button">Reset to defaults</button>
+          <span id="control-note">resolution, cadence, replay, noise, dither, break-up, heat and the palette lock apply at once &middot; size, counts, blast length and shake take hold on the next blast</span>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel wide">
+    <div class="panel-head">
+      <span class="tag">source</span>
+      <span class="name">assets/reference-sheet.png</span>
+      <span class="meta">BenHickling &middot; CC0 1.0 &middot; 50 frames of 100 &times; 100 &middot;
+        <a href="https://opengameart.org/sites/default/files/explosion1_5.png" target="_blank" rel="noopener">direct file</a> &middot;
+        <a href="https://opengameart.org/content/explosion-7" target="_blank" rel="noopener">source page</a></span>
+    </div>
+    <div class="sheet">
+      <div class="sheet-grid">
+        <img id="sheet-img" src="assets/reference-sheet.png" alt="An explosion sprite sheet: 50 frames of a fireball laid out on a ten by five grid.">
+      </div>
+    </div>
+    <p class="legend">read for its palette, its shape and its timing &mdash; no frame of it is ever drawn on the stage</p>
+  </section>
+
+  <section class="panel wide">
+    <div class="panel-head">
+      <span class="tag">files</span>
+      <span class="name">pixels/</span>
+      <span class="meta" id="viewer-meta"></span>
+    </div>
+    <div class="explorer">
+      <nav class="filelist" id="filelist" role="tablist" aria-label="Files in this repository"></nav>
+      <div class="viewer" id="viewer">
+        <pre class="code" id="code-view"></pre>
+        <article class="md" id="readme-view" hidden></article>
+        <figure class="imgview" id="sheet-view" hidden>
+          <img class="pixels" src="assets/reference-sheet.png" alt="The explosion sprite sheet, 50 frames on a ten by five grid">
+          <figcaption>50 frames of 100 &times; 100 on a 10 &times; 5 grid, drawn with eight opaque colours. Those eight are the animation's whole palette, and the frames set its arc: white flash, rolling fireball, break-up, smoke. No frame of it is drawn into the effect. BenHickling, CC0 1.0 &mdash;
+            <a href="https://opengameart.org/sites/default/files/explosion1_5.png" target="_blank" rel="noopener">direct file</a> &middot;
+            <a href="https://opengameart.org/content/explosion-7" target="_blank" rel="noopener">source page</a>.</figcaption>
+        </figure>
+        <figure class="imgview" id="image-view" hidden>
+          <img src="assets/reference.jpg" alt="Photograph of a fireball">
+          <figcaption>Background material. This photograph shaped an earlier, painterly version of the animation; the pixel-art one takes its palette and its timing from the sprite sheet instead, and nothing here feeds it any more.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

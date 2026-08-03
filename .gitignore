@@ -1,0 +1,15 @@
+# wrangler / cloudflare pages
+.wrangler/
+.dev.vars
+
+# node, only ever used for a local static server or the deploy CLI
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# editors and operating systems
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
