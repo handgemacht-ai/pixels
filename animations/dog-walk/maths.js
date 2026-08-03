@@ -15,10 +15,25 @@ export function frac(v) { return v - Math.floor(v); }
 // A repeatable speckle: the same x and y always give the same number, so the
 // ground can be generated from the distance walked rather than remembered.
 // Nothing in this animation calls Math.random.
-export function hash01(x, y) {
-  var h = (x | 0) * 374761393 + (y | 0) * 668265263;
-  h = (h ^ (h >> 13)) * 1274126177;
-  return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+export function hash01(x, y, seed) {
+  var h = (x | 0) * 374761393 + (y | 0) * 668265263 + ((seed | 0) + 1) * 2147483647;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// Smooth blotches, the same everywhere the same coordinates come round. The
+// coat is banded off the shape of the animal rather than off a formula, and
+// this is what stops the boundary between two bands being a clean arc.
+export function vnoise(x, y, cell, seed) {
+  var gx = Math.floor(x / cell), gy = Math.floor(y / cell);
+  var fx = x / cell - gx, fy = y / cell - gy;
+  var a = hash01(gx, gy, seed);
+  var b = hash01(gx + 1, gy, seed);
+  var c = hash01(gx, gy + 1, seed);
+  var d = hash01(gx + 1, gy + 1, seed);
+  var u = fx * fx * (3 - 2 * fx);
+  var v = fy * fy * (3 - 2 * fy);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 
 // Two bones, a start and an end: where the joint between them has to be.

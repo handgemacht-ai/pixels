@@ -46,11 +46,12 @@ async function mount(spec) {
 
   put(initShell(spec));
   put(initExplorer(spec));
-  put(initSheet(spec));
 
   var api = await startAnimation(spec, stageEl);
   put(api.dispose);
   window.pixels = api;
+  // after the animation, because the reference player follows its stride
+  put(initSheet(spec, api));
   put(linkShell(spec, api));
   put(initControls(spec, api));
   put(initStats(spec, api));

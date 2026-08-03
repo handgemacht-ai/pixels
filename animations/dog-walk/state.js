@@ -13,13 +13,21 @@ export var P = {};
 // long it runs.
 export var VIEW_W = 0, VIEW_H = 0, GROUND = 0, CENTRE = 0;
 
+// Every length in the rig is written for a hundred-pixel-tall stage and
+// multiplied by this. A wider stage therefore shows a bigger dog rather than
+// the same dog with more room around it, which is what the knob is for.
+export var S = 1;
+
 export function useParams(params) { P = params; }
 
 export function setStage(width, height) {
   VIEW_W = width;
   VIEW_H = height;
-  GROUND = Math.round(VIEW_H * 0.86);
+  S = height / 100;
+  // low, so the dog stands in the frame rather than floating in the middle of
+  // it, with a band of ground beneath its feet
+  GROUND = Math.round(VIEW_H * 0.88);
   // a little behind the middle, which leaves room in front of the nose for the
   // ground to arrive from
-  CENTRE = Math.round(VIEW_W * 0.44);
+  CENTRE = Math.round(VIEW_W * 0.46);
 }

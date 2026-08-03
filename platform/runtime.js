@@ -9,6 +9,7 @@
 import { readBinding } from "./api.js";
 import { createParams } from "./params.js";
 import { createSurface } from "./surface.js";
+import { initFit } from "./ui/fit.js";
 import { METRICS, ENV, clock, ring, push, clear, summarise } from "./metrics.js";
 
 function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -76,6 +77,10 @@ export async function startAnimation(spec, stageEl) {
     canvases.push(entry.instance.canvas);
     stageEl.appendChild(entry.instance.canvas);
   });
+
+  // the stage is shown at a whole-number magnification, so no stage pixel is
+  // ever wider than its neighbour
+  var unfit = initFit(stageEl, canvases, width, height);
 
   var current = null;
   function chosen(id) {
@@ -291,6 +296,8 @@ export async function startAnimation(spec, stageEl) {
         if (entry.instance.setBackdrop) entry.instance.setBackdrop(backdrop);
       });
     }
+    unfit();
+    unfit = initFit(stageEl, canvases, width, height);
     restart();
   }
 
@@ -368,6 +375,11 @@ export async function startAnimation(spec, stageEl) {
     film: spec.poster.film,
     filmSteps: filmSteps,
     cadence: cadence,
+    // Where the animation is in its own cycle, 0 to 1, if it keeps one. The
+    // reference player reads this rather than counting frames off its own
+    // clock, which is the only way the two sides can stay in step when a knob
+    // changes how long a cycle takes.
+    phase: scene.phase ? function () { return scene.phase(); } : null,
     mode: "",
     backends: backends.map(function (entry) {
       return {
@@ -421,6 +433,7 @@ export async function startAnimation(spec, stageEl) {
     dispose: function () {
       if (!running) return;
       running = false;
+      unfit();
       stageEl.removeEventListener("pointerdown", onPointer);
       live.forEach(function (entry) {
         if (entry.instance.dispose) entry.instance.dispose();
