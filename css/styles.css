@@ -57,6 +57,18 @@ body {
 }
 #detonate:hover { filter: brightness(1.08); }
 #detonate:active { transform: translateY(1px); }
+.film-link {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 14px;
+  text-decoration: none;
+}
+.film-link:hover { color: var(--hot); border-color: var(--hot); }
 
 main {
   display: grid;

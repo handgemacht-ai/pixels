@@ -49,6 +49,16 @@ export function initShell(spec) {
     });
   }
 
+  // ---------------- the filmed run, if there is one to hand out --------
+  var film = document.getElementById("film-link");
+  if (film && spec.poster.film) {
+    film.href = spec.poster.film.file;
+    film.textContent = "GIF";
+    film.title = "the whole " + spec.action.noun + " as an animated GIF · " +
+      spec.poster.film.steps + " frames";
+    film.hidden = false;
+  }
+
   // ---------------- palette strip, straight off the declaration --------
   var swatches = document.getElementById("swatches");
   if (swatches && spec.palette) {

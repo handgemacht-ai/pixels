@@ -194,6 +194,11 @@ export function defineAnimation(spec) {
   if (poster.icon) {
     must(poster.icon.size > 0, "poster.icon needs x, y and size, in stage pixels");
   }
+  if (poster.film) {
+    must(poster.film.steps > 0, "poster.film.steps is how many steps a whole run takes");
+    must(poster.film.scale > 0 && poster.film.scale === Math.round(poster.film.scale),
+      "poster.film.scale is a whole-number magnification");
+  }
 
   return {
     id: spec.id,
@@ -225,7 +230,15 @@ export function defineAnimation(spec) {
       step: poster.step === undefined ? 12 : poster.step,
       spot: poster.spot || null,
       backend: poster.backend || defaultBackend,
-      icon: poster.icon || null
+      icon: poster.icon || null,
+      // a whole run, filmed step by step, and where the film it makes lives
+      film: poster.film
+        ? {
+          steps: poster.film.steps,
+          scale: poster.film.scale,
+          file: poster.film.file || "assets/" + spec.id + ".gif"
+        }
+        : null
     },
     create: spec.create
   };

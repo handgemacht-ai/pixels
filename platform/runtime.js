@@ -169,6 +169,10 @@ export async function startAnimation(spec, stageEl) {
 
     scene.reset(spot || undefined);
     for (var i = 0; i < step; i++) advance();
+    // draw the state the animation is now in, without stepping it on again, so
+    // step 0 is the opening frame and step n is the animation n steps in
+    current.instance.draw();
+    if (current.instance.upload) current.instance.upload();
 
     var canvas = document.createElement("canvas");
     canvas.width = width;
@@ -291,6 +295,10 @@ export async function startAnimation(spec, stageEl) {
     knobs: spec.knobs,
     metrics: METRICS,
     env: ENV,
+    palette: spec.palette,
+    // how a whole run is filmed, if the animation says it can be
+    film: spec.poster.film,
+    cadence: cadence,
     mode: "",
     backends: backends.map(function (entry) {
       return {

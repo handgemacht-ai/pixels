@@ -11,22 +11,9 @@
 // a loopback port and drives the real page, with the random source seeded so
 // the same frame comes out every run.
 
-import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-
-var require_ = createRequire(import.meta.url);
-
-var ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
-var TYPES = {
-  ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg", ".md": "text/markdown", ".ico": "image/x-icon",
-  ".json": "application/json"
-};
+import { ROOT, openSite } from "./lib/page.mjs";
 
 function readArgs(argv) {
   var out = { contact: null, step: null, animation: null, steps: null };
@@ -41,41 +28,6 @@ function readArgs(argv) {
     for (var s = 4; s <= 40; s += 2) out.steps.push(s);
   }
   return out;
-}
-
-function serve() {
-  var server = http.createServer(function (req, res) {
-    var name = decodeURIComponent(req.url.split("?")[0]);
-    if (name.endsWith("/")) name += "index.html";
-    var file = path.join(ROOT, path.normalize(name));
-    if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
-    fs.readFile(file, function (err, body) {
-      if (err) { res.writeHead(404); res.end("not found"); return; }
-      res.writeHead(200, {
-        "content-type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream",
-        "cache-control": "no-store"
-      });
-      res.end(body);
-    });
-  });
-  return new Promise(function (resolve) {
-    server.listen(0, "127.0.0.1", function () {
-      resolve({ server: server, port: server.address().port });
-    });
-  });
-}
-
-// The seeded random source, installed before any of the page's own code runs.
-function seedScript() {
-  var state = 1234567 >>> 0;
-  Math.random = function () {
-    state = (state + 0x6D2B79F5) >>> 0;
-    var t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  window.__reseed = function () { state = 1234567 >>> 0; };
 }
 
 // ------------------------------ in the page --------------------------
@@ -227,31 +179,8 @@ var PAGE = {
 
 async function main() {
   var args = readArgs(process.argv.slice(2));
-
-  var playwright;
-  try {
-    // resolved the CommonJS way, so a global install or NODE_PATH is enough
-    playwright = require_("playwright");
-  } catch (err) {
-    console.error("This script needs Playwright: npm i playwright && npx playwright install chromium");
-    process.exit(1);
-  }
-
-  var served = await serve();
-  var browser = await playwright.chromium.launch({
-    args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
-  });
-  var page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-  var problems = [];
-  page.on("pageerror", function (e) { problems.push("pageerror: " + e.message); });
-  page.on("console", function (m) { if (m.type() === "error") problems.push("console: " + m.text()); });
-
-  await page.addInitScript(seedScript);
-  var url = "http://127.0.0.1:" + served.port + "/index.html" +
-    (args.animation ? "?animation=" + args.animation : "");
-  await page.goto(url, { waitUntil: "load" });
-  await page.waitForFunction("!!window.pixels", null, { timeout: 40000 });
-  await page.evaluate(function () { window.__reseed(); });
+  var site = await openSite({ animation: args.animation });
+  var page = site.page;
 
   if (args.contact) {
     var sheet = await page.evaluate(composeContact, {
@@ -259,8 +188,7 @@ async function main() {
     });
     fs.writeFileSync(args.contact, decode(sheet));
     console.log("contact sheet: " + args.contact);
-    await browser.close();
-    served.server.close();
+    await site.close();
     return;
   }
 
@@ -283,8 +211,7 @@ async function main() {
     { size: 32, body: icon32 }
   ]));
 
-  await browser.close();
-  served.server.close();
+  await site.close();
 
   var colours = Object.keys(made.stage.colours).sort(function (a, b) {
     return made.stage.colours[b] - made.stage.colours[a];
@@ -299,7 +226,7 @@ async function main() {
       "assets/og.png", "assets/icon-32.png", "assets/icon-16.png",
       "assets/apple-touch-icon.png", "favicon.ico"
     ],
-    problems: problems
+    problems: site.problems
   }, null, 2));
 }
 

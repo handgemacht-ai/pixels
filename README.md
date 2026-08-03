@@ -8,6 +8,11 @@ builds the page around it — stage, control panel, stats strip, reference playb
 There is one animation so far: [`animations/fire-explosion`](animations/fire-explosion), a
 procedural explosion drawn twice over, once in JavaScript and once in fragment shaders.
 
+![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
+
+Every frame above came out of the animation itself — a seeded run, filmed step by step. Nothing in
+it was drawn by hand.
+
 PixiJS 8.19.0 is loaded from jsDelivr, pinned with a Subresource Integrity hash, and used for one
 thing: presenting a pixel buffer at nearest-neighbour scale.
 
@@ -26,6 +31,8 @@ platform/ui/            controls, stats strip, file browser, sheet player, furni
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
 tools/poster.mjs        writes the share image and the icons from a real frame
+tools/gif.mjs           films a whole run and writes it out as an animated GIF
+tools/lib/              the shared bits: the seeded page, and a GIF writer
 assets/                 those generated images, committed
 ```
 
@@ -175,13 +182,16 @@ says why under the stats, and carries on with the others. If none start, the pag
 - **`files`** — `[{ path, sub, meta, open, alt, caption, pixelated }]`, the list the file browser
   shows. Paths are relative to the animation's folder and are fetched from the server, so what is
   on screen is what is being run. Only these files appear; nothing of the platform does.
-- **`poster`** — which frame stands in for the animation as a still:
-  `{ step, spot, backend, icon: { x, y, size } }`. `step` is how many steps into a run the frame
-  is taken, `spot` where to start that run, `backend` which path draws it, and `icon` a square cut
-  out of the same frame for the favicons, in stage pixels. All four are optional; without them the
-  platform takes a dozen steps into a centred run on the default path and cuts the middle of the
-  stage. The runtime exposes it as `window.pixels.poster({ step })`, which holds the clock still,
-  runs the animation forward by hand and hands back a canvas.
+- **`poster`** — which frame stands in for the animation as a still, and how a whole run of it is
+  filmed: `{ step, spot, backend, icon: { x, y, size }, film: { steps, scale, file } }`. `step` is
+  how many steps into a run the frame is taken, `spot` where to start that run, `backend` which
+  path draws it, and `icon` a square cut out of the same frame for the favicons, in stage pixels.
+  All are optional; without them the platform takes a dozen steps into a centred run on the default
+  path and cuts the middle of the stage. `film` says how many steps a whole run takes, how far to
+  magnify it, and where the GIF it makes lives — `assets/<id>.gif` unless the animation says
+  otherwise. Declaring it puts a GIF link in the header. The runtime exposes the mechanism as
+  `window.pixels.poster({ step })`, which holds the clock still, runs the animation forward by hand
+  and hands back a canvas.
 
 ## The share image and the icons
 
@@ -200,6 +210,23 @@ It needs Playwright with Chromium (`npm i playwright && npx playwright install c
 serves the repository itself on a loopback port. The same seed and the same step give the same
 bytes every run. The `og:` and `twitter:` tags in `index.html` point at the result; they are
 site-level, so one animation's poster stands for the site.
+
+## The animated GIF
+
+`assets/fire-explosion.gif` is the same run, filmed rather than posed: every step of a centred
+detonation, magnified four times, twelve frames a second, looping.
+
+```
+node tools/gif.mjs                        regenerate assets/<id>.gif
+node tools/gif.mjs --scale 6              bigger blocks
+node tools/gif.mjs --out /tmp/try.gif     somewhere else
+```
+
+The palette goes straight into the file's colour table, so the eight colours in the file are the
+eight the animation draws with — nothing is dithered, resampled or reduced, and a frame that
+matches the one before it is stored as the rectangle that changed. It is deterministic in the same
+way the poster is: the same seed gives the same bytes. The header links to it, and it is the image
+at the top of this file.
 
 ## What the stats panel measures
 
