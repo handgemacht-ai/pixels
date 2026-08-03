@@ -3,20 +3,24 @@
 // ---------------------------------------------------------------------
 // What the browser will actually tell you about its own performance. There
 // is no GPU-load or VRAM figure to read anywhere, so nothing here pretends
-// to be one: this is wall-clock timing plus counts of our own work.
+// to be one: this is wall-clock timing plus counts the animation and its
+// backends hand over.
+//
+// -1 stands for "this mode does not produce this number", never for zero.
 // ---------------------------------------------------------------------
 export var METRICS = {
   fps: 0, fpsAvg: 0, frameAvg: 0, frameWorst: 0,
-  simAvg: 0, simWorst: 0, uploadAvg: 0, renderAvg: 0,
-  blasts: 0, lobes: 0, particles: 0, pixels: 0,
-  view: "-",
-  // -1 stands for "this mode does not produce this number", never for zero
-  mode: "cpu", gpuPass: -1, draws: -1, cpuStep: -1, gpuStep: -1
+  stepAvg: 0, stepWorst: 0, uploadAvg: 0, presentAvg: 0, gpuPass: -1,
+  view: "-", mode: "",
+  // per backend id: its last measured step cost, and whatever it counts
+  backendStep: {},
+  backend: {},
+  // whatever the animation counts
+  custom: {}
 };
 
 export var ENV = {
-  renderer: "starting", gpu: "n/a", dpr: window.devicePixelRatio || 1,
-  shaders: "not started", timer: "n/a"
+  dpr: window.devicePixelRatio || 1
 };
 
 // Wall-clock timing. Everything the stats panel shows is measured here, with
@@ -35,6 +39,11 @@ export function push(r, ms, at) {
   r.ms[r.i] = ms;
   r.i = (r.i + 1) % r.size;
   if (r.n < r.size) r.n += 1;
+}
+
+export function clear(r) {
+  r.n = 0;
+  r.i = 0;
 }
 
 export function summarise(r, now, window_, out) {

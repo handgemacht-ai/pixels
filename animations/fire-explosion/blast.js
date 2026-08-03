@@ -1,7 +1,6 @@
 "use strict";
 
-import { P } from "./params.js";
-import { VIEW_W, VIEW_H, GROUND } from "./stage.js";
+import { P, VIEW_W, VIEW_H, GROUND } from "./state.js";
 import { rand, randInt, clamp } from "./maths.js";
 
 // ---------------------------- a detonation ---------------------------

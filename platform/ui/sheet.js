@@ -1,21 +1,28 @@
 "use strict";
 
-// Plays the CC0 sprite sheet a frame at a time next to the live blast, at the
-// same twelve steps a second and at the same pixel scale, so the two can be
-// watched side by side. The sheet is only ever blitted into this canvas:
+// Plays the animation's registered reference sheet a frame at a time next to
+// the live stage, at the same cadence and the same pixel scale, so the two can
+// be watched side by side. The sheet is only ever blitted into this canvas:
 // nothing here touches the animation.
 
-export function initSheet() {
-  var COLS = 10, FRAMES = 50, SIZE = 100;
-  // twelve a second unless the cadence knob says otherwise, in which case the
-  // sheet follows so the two sides stay comparable
-  var FPS = 12;
-  var VIEW_W = 160, VIEW_H = 100;
+export function initSheet(spec) {
+  if (!spec.reference) return;
+  var reference = spec.reference;
 
   var sheet = document.getElementById("sheet-img");
   var canvas = document.getElementById("sheet-canvas");
   var label = document.getElementById("sheet-meta");
   if (!sheet || !canvas || !canvas.getContext) return;
+
+  var COLS = reference.columns;
+  var FRAMES = reference.frames;
+  var SIZE = reference.frameSize;
+  var VIEW_W = canvas.width;
+  var VIEW_H = canvas.height;
+
+  // the animation's cadence, so the two sides stay comparable; it arrives with
+  // every detonation and follows the knob
+  var FPS = 12;
 
   var ctx = canvas.getContext("2d");
   var frame = 0;
@@ -42,7 +49,7 @@ export function initSheet() {
     var step = carried | 0;
     if (!step) return;
     carried -= step;
-    // the sheet is shorter than the gap between blasts, so it loops on its own
+    // the sheet is shorter than the gap between runs, so it loops on its own
     // and a detonation snaps it back to the first frame
     frame = (frame + step) % FRAMES;
     draw();
@@ -53,8 +60,8 @@ export function initSheet() {
     draw();
   }
 
-  // the sheet holds its last frame until the next detonation restarts it
-  document.addEventListener("blast", function (event) {
+  // the sheet holds its last frame until the next run restarts it
+  document.addEventListener("pixels:detonate", function (event) {
     if (event.detail && event.detail.fps > 0) FPS = event.detail.fps;
     if (!ready) return;
     frame = 0;

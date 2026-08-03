@@ -1,16 +1,14 @@
 "use strict";
 
 // Everything here builds a step by writing pixels in JavaScript, one at a
-// time, into a buffer the size of the stage. js/render/gpu.js does the same
-// work in fragment shaders; the two are meant to land on the same bytes.
+// time, into a buffer the size of the stage. render/gpu.js does the same work
+// in fragment shaders; the two are meant to land on the same bytes.
 
-import { P } from "../params.js";
-import { VIEW_W, VIEW_H, GROUND } from "../stage.js";
+import { P, VIEW_W, VIEW_H, GROUND } from "../state.js";
 import { C, FIRE, blend } from "../palette.js";
 import { clamp, hash01, vnoise } from "../maths.js";
 import { curve, HEAT, CORE, WIDE, TALL, RISE, WOB, TEAR, BITE } from "../curves.js";
 import { bounds } from "../blast.js";
-import { METRICS } from "../metrics.js";
 
 // ------------------------- the drawing buffers -----------------------
 
@@ -37,9 +35,7 @@ export function allocate() {
   fctx = frame.getContext("2d");
   image = fctx.createImageData(VIEW_W, VIEW_H);
   pixels = image.data;
-  METRICS.view = VIEW_W + " x " + VIEW_H;
 }
-allocate();
 
 export function clearFrame() { pixels.fill(0); }
 export function resetTouched() { touched = 0; }
@@ -312,4 +308,47 @@ export function drawBlast(b) {
       if (hash01(x + i, y, b.seed + 41 + n) > 0.35) put(x + i, y, C.smoke);
     }
   }
+}
+
+// ------------------------- the registered backend --------------------
+// This path has no canvas of its own: it fills a buffer and hands it to the
+// pixel surface the platform offers, which is what blows it up on screen.
+
+export function createJavascriptBackend(ctx) {
+  var surface = ctx.surface;
+  var scene = ctx.scene;
+  var count = { pixels: 0 };
+
+  allocate();
+  surface.setFrame(frame);
+
+  return {
+    canvas: surface.canvas,
+
+    setBackdrop: function (canvas) { surface.setBackdrop(canvas); },
+
+    resize: function (width, height) {
+      allocate();
+      surface.resize(width, height);
+      surface.setFrame(frame);
+    },
+
+    draw: function () {
+      resetTouched();
+      clearFrame();
+      var blasts = scene.blasts;
+      for (var i = blasts.length - 1; i >= 0; i--) drawBlast(blasts[i]);
+    },
+
+    upload: function () {
+      blit();
+      surface.refresh();
+    },
+
+    present: function (dx, dy) { surface.present(dx, dy); },
+
+    readFrame: function () { return new Uint8Array(pixels); },
+
+    stats: function () { count.pixels = touched; return count; }
+  };
 }

@@ -1,9 +1,9 @@
 "use strict";
 
 // ==================== the same picture, on the GPU ===================
-// js/render/cpu.js builds a step by writing pixels in JavaScript. What
-// follows does the same work in fragment shaders on a second WebGL 2
-// canvas, one small pass at a time:
+// render/cpu.js builds a step by writing pixels in JavaScript. What follows
+// does the same work in fragment shaders on a second WebGL 2 canvas, one
+// small pass at a time:
 //
 //   silhouette -> depth -> colour        (for the smoke, then the flame)
 //
@@ -14,8 +14,7 @@
 // finished frame over the backdrop with the camera shake.
 // ---------------------------------------------------------------------
 
-import { P } from "../params.js";
-import { VIEW_W, VIEW_H, GROUND } from "../stage.js";
+import { P, VIEW_W, VIEW_H, GROUND } from "../state.js";
 import { C } from "../palette.js";
 import { clamp } from "../maths.js";
 import { curve, HEAT, CORE, WIDE, TALL, RISE, WOB, TEAR, BITE } from "../curves.js";
@@ -50,7 +49,7 @@ export function createGpuRenderer() {
     premultipliedAlpha: false,
     preserveDrawingBuffer: false
   });
-  if (!gl) return null;
+  if (!gl) throw new Error("WebGL 2 is not available in this browser");
 
   var trouble = "";
 
@@ -94,7 +93,9 @@ export function createGpuRenderer() {
   };
   var key;
   for (key in progs) {
-    if (Object.prototype.hasOwnProperty.call(progs, key) && !progs[key]) return null;
+    if (Object.prototype.hasOwnProperty.call(progs, key) && !progs[key]) {
+      throw new Error(trouble || "a shader program would not build");
+    }
   }
 
   var current = null;
@@ -459,5 +460,34 @@ export function createGpuRenderer() {
       target("depthA");
       target("depthB");
     }
+  };
+}
+
+// ------------------------- the registered backend --------------------
+// This path owns its canvas and puts the finished frame on screen itself,
+// so it never touches the platform's pixel surface. If WebGL 2 is missing or
+// a program will not build, this throws and the platform says why under the
+// stats and leaves the switch on the JavaScript path.
+
+export function createShaderBackend(ctx) {
+  var gpu = createGpuRenderer();
+  var scene = ctx.scene;
+  var count = { draws: 0 };
+
+  return {
+    canvas: gpu.canvas,
+
+    env: {
+      "shader path": "7 programs",
+      "gpu timer": gpu.hasTimer ? "EXT_disjoint_timer_query_webgl2" : "n/a (extension absent)"
+    },
+
+    setBackdrop: function (canvas) { gpu.loadBackdrop(canvas); },
+    resize: function () { gpu.resize(); },
+    draw: function () { count.draws = gpu.build(scene.blasts); },
+    present: function (dx, dy) { gpu.present(dx, dy); },
+    readFrame: function () { return gpu.readFrame(); },
+    stats: function () { return count; },
+    gpuMs: function () { return gpu.gpuMs(); }
   };
 }
