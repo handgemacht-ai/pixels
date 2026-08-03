@@ -4,6 +4,7 @@
 // page draws.
 //
 //   node tools/poster.mjs                 write assets/ and favicon.ico
+//   node tools/poster.mjs --thumbs        a still for every animation, for the switcher
 //   node tools/poster.mjs --contact out.png   a contact sheet of candidate steps
 //   node tools/poster.mjs --step 18       override the declared step
 //
@@ -16,12 +17,13 @@ import path from "node:path";
 import { ROOT, openSite } from "./lib/page.mjs";
 
 function readArgs(argv) {
-  var out = { contact: null, step: null, animation: null, steps: null };
+  var out = { contact: null, step: null, animation: null, steps: null, thumbs: false };
   for (var i = 0; i < argv.length; i++) {
     if (argv[i] === "--contact") out.contact = argv[i + 1] || "contact.png";
     if (argv[i] === "--step") out.step = Number(argv[i + 1]);
     if (argv[i] === "--animation") out.animation = argv[i + 1];
     if (argv[i] === "--steps") out.steps = argv[i + 1].split(",").map(Number);
+    if (argv[i] === "--thumbs") out.thumbs = true;
   }
   if (!out.steps) {
     out.steps = [];
@@ -103,6 +105,40 @@ function composeAll(options) {
   return out;
 }
 
+// The still the switcher shows next to an animation's name: its own poster
+// step, at whole-number scale, and nothing else drawn on top.
+function composeThumb(options) {
+  var api = window.pixels;
+  if (window.__reseed) window.__reseed();
+  var shot = api.poster({});
+  var stage = shot.canvas;
+  var canvas = document.createElement("canvas");
+  canvas.width = stage.width * options.scale;
+  canvas.height = stage.height * options.scale;
+  var ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(stage, 0, 0, canvas.width, canvas.height);
+  return {
+    png: canvas.toDataURL("image/png"),
+    size: canvas.width + "x" + canvas.height,
+    step: shot.step
+  };
+}
+
+// What the switcher is listing, and where each row expects to find its still.
+function readRegistry() {
+  return Array.prototype.map.call(
+    document.querySelectorAll("#switcher .switch"),
+    function (button) {
+      var img = button.querySelector("img");
+      return {
+        id: button.getAttribute("data-animation"),
+        thumb: img ? img.getAttribute("src") : null
+      };
+    }
+  );
+}
+
 function composeContact(options) {
   var api = window.pixels;
   var cols = 6;
@@ -177,8 +213,43 @@ var PAGE = {
   site: "pixels.handgemacht.ai"
 };
 
+// One still per animation. Each one is opened on its own, so the frame it
+// poses is the frame it would pose for anybody arriving at that URL.
+async function writeThumbs() {
+  var index = await openSite({});
+  var registry = await index.page.evaluate(readRegistry);
+  // the missing stills this run is about to write show up here as 404s
+  var problems = index.problems.filter(function (line) {
+    return line.indexOf("404") < 0;
+  });
+  await index.close();
+
+  var wrote = [];
+  for (var i = 0; i < registry.length; i++) {
+    var entry = registry[i];
+    if (!entry.thumb) continue;
+    var site = await openSite({ animation: entry.id });
+    var made = await site.page.evaluate(composeThumb, { scale: 2 });
+    var file = path.join(ROOT, path.normalize(entry.thumb));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, decode(made.png));
+    wrote.push({ animation: entry.id, file: entry.thumb, step: made.step, size: made.size });
+    problems = problems.concat(site.problems.filter(function (line) {
+      return line.indexOf("404") < 0;
+    }));
+    await site.close();
+  }
+  console.log(JSON.stringify({ thumbs: wrote, problems: problems }, null, 2));
+}
+
 async function main() {
   var args = readArgs(process.argv.slice(2));
+
+  if (args.thumbs) {
+    await writeThumbs();
+    return;
+  }
+
   var site = await openSite({ animation: args.animation });
   var page = site.page;
 

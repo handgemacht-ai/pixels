@@ -5,13 +5,19 @@ animation is a self-contained folder that registers what it is and what it needs
 builds the page around it — stage, control panel, stats strip, reference playback and file browser
 — out of that registration and nothing else.
 
-There is one animation so far: [`animations/fire-explosion`](animations/fire-explosion), a
-procedural explosion drawn twice over, once in JavaScript and once in fragment shaders.
+There are two animations:
+
+- [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
+  over, once in JavaScript and once in fragment shaders.
+- [`animations/dog-walk`](animations/dog-walk) — a pixel-art dog whose walk is solved from an
+  internal skeleton, held against a Muybridge plate from 1887.
 
 ![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
 
+![Two strides of the dog, drawn at four times its size](assets/dog-walk.gif)
+
 Every frame above came out of the animation itself — a seeded run, filmed step by step. Nothing in
-it was drawn by hand.
+either was drawn by hand.
 
 PixiJS 8.19.0 is loaded from jsDelivr, pinned with a Subresource Integrity hash, and used for one
 thing: presenting a pixel buffer at nearest-neighbour scale.
@@ -27,16 +33,25 @@ platform/runtime.js     the clock, the drawing-path switch, stage rebuilds
 platform/params.js      the live knob values, built from the declarations
 platform/surface.js     the PixiJS pixel surface offered to drawing paths
 platform/metrics.js     the numbers a page can actually measure
-platform/ui/            controls, stats strip, file browser, sheet player, furniture
+platform/ui/            switcher, controls, stats strip, file browser, sheet player, furniture
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
-tools/poster.mjs        writes the share image and the icons from a real frame
+tools/poster.mjs        writes the share image, the icons and the switcher stills
 tools/gif.mjs           films a whole run and writes it out as an animated GIF
 tools/lib/              the shared bits: the seeded page, and a GIF writer
 assets/                 those generated images, committed
 ```
 
-`?animation=<id>` picks one out of the registry; without it the first is used.
+## Switching animations
+
+The rail down the left lists every animation in the registry — its title, its tagline and a still
+of one of its own frames — and picking one tears the current animation down and builds the next in
+its place: the stage, the knobs, the stats, the file browser and the reference player are all
+rebuilt from the new registration, and the address bar follows along on `?animation=<id>`. Nothing
+about either animation is written into the switcher; it shows what it was handed. Below about
+1120 px of width the rail lies down above the stage and scrolls sideways.
+
+`?animation=<id>` also works on its own, typed or linked; without it the first animation is used.
 
 ## Run it locally
 
@@ -63,7 +78,8 @@ animations/<id>/
   …              whatever else the animation is made of
 ```
 
-Add the folder, then import it in `animations/index.js` and put it in the `ANIMATIONS` array.
+Add the folder, then import it in `animations/index.js` and put it in the `ANIMATIONS` array. It
+appears in the switcher straight away; `node tools/poster.mjs --thumbs` gives it its picture there.
 
 ### The registration
 
@@ -80,7 +96,8 @@ export default defineAnimation({
   base: new URL(".", import.meta.url).href,     // so the platform can find this folder
   action: { verb: "Restart", noun: "run" },     // the button, and the word used in notes
 
-  stage: { width: 160, aspect: 10 / 16, background: 0x000000, legend: "one dot" },
+  stage: { width: 160, aspect: 10 / 16, background: 0x000000,
+           hint: "click the canvas", legend: "one dot" },
   cadence: knob("stepsPerSec"),                 // visual steps a second
   replay: 4,                                    // seconds between automatic runs, 0 for none
 
@@ -174,9 +191,12 @@ says why under the stats, and carries on with the others. If none start, the pag
 
 - **`palette`** — `{ colours, lockKnob, title }`. Draws the swatch strip under the reference
   playback and names the colours the animation holds itself to.
-- **`reference`** — a sprite sheet the platform plays back beside the stage at the same cadence,
+- **`reference`** — a sheet of frames the platform plays back beside the stage at the same cadence,
   restarted on every run: `{ image, columns, rows, frames, frameSize, alt, credit, links, legend,
-  sourceLegend }`.
+  sourceLegend }`. `frameSize` can be split into `frameWidth`/`frameHeight`, and a sheet with a
+  margin or gutters declares `origin: { x, y }` and `gap: { x, y }`. `player: { width, height }`
+  sizes the canvas it is played back in and `pixelated: false` turns off nearest-neighbour scaling,
+  which is what a photographic plate wants and a hand-drawn sprite sheet does not.
 - **`stats`** — `[{ key, label, format }]`, read from `scene.stats()` each step and shown in the
   strip. A backend declares its own the same way and they show as `n/a` while another path draws.
 - **`files`** — `[{ path, sub, meta, open, alt, caption, pixelated }]`, the list the file browser
@@ -202,9 +222,14 @@ softened. They are committed, because the site is static.
 
 ```
 node tools/poster.mjs                              regenerate everything
+node tools/poster.mjs --thumbs                     a still per animation, for the switcher
 node tools/poster.mjs --contact sheet.png          contact sheet of candidate steps
+node tools/poster.mjs --animation dog-walk --contact sheet.png   …for another animation
 node tools/poster.mjs --step 26                    try a step without changing the declaration
 ```
+
+`--thumbs` walks the registry and writes `assets/<id>-thumb.png` for every animation in it, each
+one that animation's own poster frame at twice its size. Those are the pictures in the switcher.
 
 It needs Playwright with Chromium (`npm i playwright && npx playwright install chromium`) and
 serves the repository itself on a loopback port. The same seed and the same step give the same
@@ -214,19 +239,21 @@ site-level, so one animation's poster stands for the site.
 ## The animated GIF
 
 `assets/fire-explosion.gif` is the same run, filmed rather than posed: every step of a centred
-detonation, magnified four times, twelve frames a second, looping.
+detonation, magnified four times, twelve frames a second, looping. `assets/dog-walk.gif` is two
+strides of the dog, filmed the same way.
 
 ```
-node tools/gif.mjs                        regenerate assets/<id>.gif
-node tools/gif.mjs --scale 6              bigger blocks
-node tools/gif.mjs --out /tmp/try.gif     somewhere else
+node tools/gif.mjs                            regenerate assets/<id>.gif
+node tools/gif.mjs --animation dog-walk       film another animation
+node tools/gif.mjs --scale 6                  bigger blocks
+node tools/gif.mjs --out /tmp/try.gif         somewhere else
 ```
 
-The palette goes straight into the file's colour table, so the eight colours in the file are the
-eight the animation draws with — nothing is dithered, resampled or reduced, and a frame that
-matches the one before it is stored as the rectangle that changed. It is deterministic in the same
-way the poster is: the same seed gives the same bytes. The header links to it, and it is the image
-at the top of this file.
+The palette goes straight into the file's colour table, so the colours in the file are the ones the
+animation draws with — nothing is dithered, resampled or reduced, and a frame that matches the one
+before it is stored as the rectangle that changed. It is deterministic in the same way the poster
+is: the same seed gives the same bytes. The header links to it, and both are the images at the top
+of this file.
 
 ## What the stats panel measures
 
@@ -271,4 +298,4 @@ npx wrangler pages deploy . --project-name pixels
 
 The platform and the animations are original work. Reference material carries its own licence,
 named in each animation's own README — for `fire-explosion`, a CC0 1.0 sprite sheet and a
-public-domain photograph.
+public-domain photograph; for `dog-walk`, a public-domain Muybridge plate.

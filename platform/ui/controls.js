@@ -19,7 +19,8 @@ function decimalsOf(knob) {
 
 export function initControls(spec, api) {
   var groupsEl = document.getElementById("control-groups");
-  if (!groupsEl) return;
+  if (!groupsEl) return function () {};
+  groupsEl.textContent = "";
 
   function readout(knob) {
     var value = api.params[knob.key];
@@ -107,10 +108,14 @@ export function initControls(spec, api) {
   });
 
   var reset = document.getElementById("reset-params");
-  if (reset) {
-    reset.addEventListener("click", function () {
-      api.reset();
-      widgets.forEach(function (pull) { pull(); });
-    });
+  function putBack() {
+    api.reset();
+    widgets.forEach(function (pull) { pull(); });
   }
+  if (reset) reset.addEventListener("click", putBack);
+
+  return function () {
+    if (reset) reset.removeEventListener("click", putBack);
+    groupsEl.textContent = "";
+  };
 }

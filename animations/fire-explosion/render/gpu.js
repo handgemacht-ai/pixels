@@ -453,6 +453,14 @@ export function createGpuRenderer() {
     readFrame: readFrame,
     loadBackdrop: loadBackdrop,
     gpuMs: function () { return lastGpuMs; },
+    // A browser only keeps a handful of live WebGL contexts. Switching away
+    // from this animation hands this one back rather than waiting for the
+    // garbage collector to notice, so switching to and fro cannot run the
+    // page out of contexts.
+    dispose: function () {
+      var lose = gl.getExtension("WEBGL_lose_context");
+      if (lose) lose.loseContext();
+    },
     resize: function () {
       canvas.width = VIEW_W;
       canvas.height = VIEW_H;
@@ -488,6 +496,7 @@ export function createShaderBackend(ctx) {
     present: function (dx, dy) { gpu.present(dx, dy); },
     readFrame: function () { return gpu.readFrame(); },
     stats: function () { return count; },
-    gpuMs: function () { return gpu.gpuMs(); }
+    gpuMs: function () { return gpu.gpuMs(); },
+    dispose: function () { gpu.dispose(); }
   };
 }

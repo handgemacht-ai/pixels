@@ -3,12 +3,21 @@
 // The page furniture the animation's declaration fills in: the title, the
 // button, the palette strip, the panel around the reference material, and the
 // notes that quote numbers the knobs can move.
+//
+// Every panel here hands back a way to undo itself, because the page outlives
+// the animation showing in it.
 
 import { readBinding } from "../api.js";
 
 function text(id, value) {
   var el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function empty(id) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = "";
+  return el;
 }
 
 function hex(colour) {
@@ -22,7 +31,9 @@ export function rootOf(spec) {
 }
 
 export function initShell(spec) {
-  document.title = spec.title;
+  var undo = [];
+
+  document.title = spec.title + " · pixels";
   text("title", spec.title);
   text("tagline", spec.tagline);
   text("stage-legend", spec.stage.legend);
@@ -33,7 +44,7 @@ export function initShell(spec) {
   var button = document.getElementById("detonate");
   if (button) {
     button.textContent = spec.action.verb;
-    button.addEventListener("click", function () {
+    var press = function () {
       var stage = document.getElementById("stage");
       if (!stage) return;
       var box = stage.getBoundingClientRect();
@@ -46,21 +57,28 @@ export function initShell(spec) {
         ? new PointerEvent("pointerdown", options)
         : new MouseEvent("pointerdown", options);
       stage.dispatchEvent(event);
-    });
+    };
+    button.addEventListener("click", press);
+    undo.push(function () { button.removeEventListener("click", press); });
   }
 
   // ---------------- the filmed run, if there is one to hand out --------
   var film = document.getElementById("film-link");
-  if (film && spec.poster.film) {
-    film.href = spec.poster.film.file;
-    film.textContent = "GIF";
-    film.title = "the whole " + spec.action.noun + " as an animated GIF · " +
-      spec.poster.film.steps + " frames";
-    film.hidden = false;
+  if (film) {
+    if (spec.poster.film) {
+      film.href = spec.poster.film.file;
+      film.textContent = "GIF";
+      film.title = "the whole " + spec.action.noun + " as an animated GIF · " +
+        spec.poster.film.steps + " frames";
+      film.hidden = false;
+    } else {
+      film.hidden = true;
+      film.removeAttribute("href");
+    }
   }
 
   // ---------------- palette strip, straight off the declaration --------
-  var swatches = document.getElementById("swatches");
+  var swatches = empty("swatches");
   if (swatches && spec.palette) {
     swatches.title = spec.palette.title;
     Object.keys(spec.palette.colours).forEach(function (name) {
@@ -73,20 +91,28 @@ export function initShell(spec) {
   }
 
   // ---------------- the reference material, if any is registered -------
-  if (!spec.reference) return;
-  var reference = spec.reference;
-
   var sheetPanel = document.getElementById("sheet-panel");
+  var refPanel = document.getElementById("ref-panel");
+  var image = document.getElementById("sheet-img");
+  var meta = empty("ref-meta");
+  var done = function () { undo.forEach(function (fn) { fn(); }); };
+
+  if (!spec.reference) {
+    if (sheetPanel) sheetPanel.hidden = true;
+    if (refPanel) refPanel.hidden = true;
+    if (image) image.removeAttribute("src");
+    return done;
+  }
+
+  var reference = spec.reference;
   if (sheetPanel) sheetPanel.hidden = false;
   text("sheet-name", reference.name);
   text("sheet-legend", reference.legend);
 
-  var refPanel = document.getElementById("ref-panel");
   if (refPanel) refPanel.hidden = false;
   text("ref-name", rootOf(spec) + reference.image);
   text("ref-legend", reference.sourceLegend);
 
-  var meta = document.getElementById("ref-meta");
   if (meta) {
     meta.textContent = reference.credit;
     reference.links.forEach(function (link) {
@@ -100,11 +126,12 @@ export function initShell(spec) {
     });
   }
 
-  var image = document.getElementById("sheet-img");
   if (image) {
     image.src = reference.url;
     image.alt = reference.alt;
   }
+
+  return done;
 }
 
 // The two notes that quote a number a knob can move, so they are rewritten
@@ -124,10 +151,11 @@ export function linkShell(spec, api) {
 
   function stageMeta() {
     var gap = readBinding(spec.replay, api.params);
-    text("stage-meta", "click the canvas" +
+    text("stage-meta", spec.stage.hint +
       (gap > 0 ? " · auto-replays every " + gap.toFixed(1) + "s unless the knobs say otherwise" : ""));
   }
 
   stageMeta();
   document.addEventListener("pixels:apply", stageMeta);
+  return function () { document.removeEventListener("pixels:apply", stageMeta); };
 }

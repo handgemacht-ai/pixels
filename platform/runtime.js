@@ -101,6 +101,7 @@ export async function startAnimation(spec, stageEl) {
   var shakeX = 0, shakeY = 0;
   var pendingGrab = null;
   var posing = false;
+  var running = true;
   var ZERO = { x: 0, y: 0 };
 
   function advance() {
@@ -230,6 +231,9 @@ export async function startAnimation(spec, stageEl) {
   }
 
   function tick() {
+    // an animation that has been put away stops asking for frames, which is
+    // what lets another one take the stage without the two of them sharing it
+    if (!running) return;
     window.requestAnimationFrame(tick);
     // the clock stands still while a poster frame is being posed
     if (posing) { lastTick = 0; return; }
@@ -342,19 +346,36 @@ export async function startAnimation(spec, stageEl) {
 
     // the declared poster frame, on a canvas; options override the
     // declaration, which is how the generator hunts for a better step
-    poster: pose
+    poster: pose,
+
+    // Put the animation away: stop its clock, hand back its drawing paths and
+    // its surface, and leave the stage empty for the next one.
+    dispose: function () {
+      if (!running) return;
+      running = false;
+      stageEl.removeEventListener("pointerdown", onPointer);
+      live.forEach(function (entry) {
+        if (entry.instance.dispose) entry.instance.dispose();
+      });
+      if (scene.dispose) scene.dispose();
+      canvases.forEach(function (canvas) {
+        if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      });
+      surface.dispose();
+    }
   };
 
   current = chosen(spec.defaultBackend);
   showMode();
 
-  stageEl.addEventListener("pointerdown", function (event) {
+  function onPointer(event) {
     var rect = stageEl.getBoundingClientRect();
     detonate({
       x: (event.clientX - rect.left) / rect.width * width,
       y: (event.clientY - rect.top) / rect.height * height
     });
-  });
+  }
+  stageEl.addEventListener("pointerdown", onPointer);
 
   restart();
   window.requestAnimationFrame(tick);

@@ -45,7 +45,11 @@ export function initStats(spec, api) {
   var envEl = document.getElementById("stats-env");
   var modesEl = document.getElementById("modes");
   var noteEl = document.getElementById("mode-note");
-  if (!statsEl) return;
+  if (!statsEl) return function () {};
+
+  statsEl.textContent = "";
+  if (envEl) envEl.textContent = "";
+  if (modesEl) modesEl.textContent = "";
 
   var metrics = api.metrics;
 
@@ -175,5 +179,13 @@ export function initStats(spec, api) {
 
   describeMode();
   paint();
-  window.setInterval(paint, 250);
+  var timer = window.setInterval(paint, 250);
+
+  return function () {
+    window.clearInterval(timer);
+    statsEl.textContent = "";
+    if (envEl) envEl.textContent = "";
+    if (modesEl) modesEl.textContent = "";
+    if (noteEl) noteEl.textContent = "";
+  };
 }

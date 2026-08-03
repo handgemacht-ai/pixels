@@ -70,14 +70,72 @@ body {
 }
 .film-link:hover { color: var(--hot); border-color: var(--hot); }
 
-main {
+.page {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 232px minmax(0, 1fr);
   gap: 14px;
   padding: 8px clamp(12px, 3vw, 28px) 34px;
   max-width: 1500px;
   margin: 0 auto;
   align-items: start;
+}
+.rail { position: sticky; top: 8px; min-width: 0; }
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.switcher { display: flex; flex-direction: column; padding: 8px; gap: 4px; }
+.switch {
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.switch:hover:not(:disabled) { background: #1b1b24; }
+.switch[aria-current="true"] { background: #23202a; cursor: default; }
+.switch-shot {
+  flex: none;
+  width: 56px;
+  height: 35px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: #06050a;
+  image-rendering: pixelated;
+}
+.switch-shot[hidden] { display: none; }
+.switch-words { min-width: 0; display: block; }
+/* the name wraps rather than being cut off: two animations whose titles start
+   the same way have to be told apart in the rail */
+.switch-words b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.switch[aria-current="true"] .switch-words b { color: var(--hot); }
+.switch-words span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel {
@@ -409,6 +467,17 @@ main {
   max-width: 100%;
   display: block;
   image-rendering: pixelated;
+}
+
+/* The rail runs out of room before the panels do: below this it lies down
+   across the top and scrolls sideways instead. */
+@media (max-width: 1120px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; }
+  .switcher { flex-direction: row; overflow-x: auto; }
+  .switch { width: auto; flex: 0 0 auto; }
+  .switch-words b, .switch-words span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .switch-words { max-width: 190px; }
 }
 
 @media (max-width: 900px) {

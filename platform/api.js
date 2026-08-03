@@ -170,6 +170,18 @@ export function defineAnimation(spec) {
       rows: r.rows || Math.ceil(r.frames / r.columns),
       frames: r.frames,
       frameSize: r.frameSize,
+      // a grid is square, flush with the corner and gapless unless it says
+      // otherwise — which a photographic plate usually does
+      frameHeight: r.frameHeight || r.frameSize,
+      origin: { x: (r.origin && r.origin.x) || 0, y: (r.origin && r.origin.y) || 0 },
+      gap: { x: (r.gap && r.gap.x) || 0, y: (r.gap && r.gap.y) || 0 },
+      // the canvas the player runs in: a stage-sized one for pixel art, a
+      // roomier one for a photographic plate that has to be shrunk to fit
+      player: {
+        width: (r.player && r.player.width) || 160,
+        height: (r.player && r.player.height) || 100
+      },
+      pixelated: r.pixelated === undefined ? true : !!r.pixelated,
       alt: r.alt || "",
       credit: r.credit || "",
       links: r.links || [],
@@ -214,7 +226,9 @@ export function defineAnimation(spec) {
       width: checkBinding(stage.width === undefined ? 160 : stage.width, keys, "stage.width"),
       aspect: stage.aspect,
       background: stage.background === undefined ? 0x000000 : stage.background,
-      legend: stage.legend || ""
+      legend: stage.legend || "",
+      // what the line above the stage tells a visitor they can do to it
+      hint: stage.hint || "click the canvas"
     },
     cadence: checkBinding(spec.cadence === undefined ? 12 : spec.cadence, keys, "cadence"),
     replay: checkBinding(spec.replay === undefined ? 0 : spec.replay, keys, "replay"),
@@ -231,6 +245,9 @@ export function defineAnimation(spec) {
       spot: poster.spot || null,
       backend: poster.backend || defaultBackend,
       icon: poster.icon || null,
+      // the small still the switcher lists this animation with, cut from the
+      // same posed frame
+      thumb: poster.thumb || "assets/" + spec.id + "-thumb.png",
       // a whole run, filmed step by step, and where the film it makes lives
       film: poster.film
         ? {

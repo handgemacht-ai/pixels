@@ -23,6 +23,27 @@ export var ENV = {
   dpr: window.devicePixelRatio || 1
 };
 
+// Emptied when one animation is put away and another is brought up, so no
+// reading from the last one is ever shown against the new one.
+export function resetMetrics() {
+  METRICS.fps = 0;
+  METRICS.fpsAvg = 0;
+  METRICS.frameAvg = 0;
+  METRICS.frameWorst = 0;
+  METRICS.stepAvg = 0;
+  METRICS.stepWorst = 0;
+  METRICS.uploadAvg = 0;
+  METRICS.presentAvg = 0;
+  METRICS.gpuPass = -1;
+  METRICS.view = "-";
+  METRICS.mode = "";
+  METRICS.backendStep = {};
+  METRICS.backend = {};
+  METRICS.custom = {};
+  ENV.renderer = "";
+  ENV.gpu = "";
+}
+
 // Wall-clock timing. Everything the stats panel shows is measured here, with
 // a handful of clock reads a frame and a running count of written pixels —
 // small enough not to change the thing it is measuring.

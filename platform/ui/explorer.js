@@ -22,7 +22,13 @@ export function initExplorer(spec) {
   var imageView = document.getElementById("image-view");
   var imageEl = document.getElementById("image-view-img");
   var captionEl = document.getElementById("image-view-caption");
-  if (!list || !viewer || !codeView || !spec.files.length) return;
+  if (!list || !viewer || !codeView) return function () {};
+
+  list.textContent = "";
+  codeView.textContent = "";
+  if (readmeView) readmeView.textContent = "";
+  if (viewerMeta) viewerMeta.textContent = "";
+  if (!spec.files.length) return function () {};
 
   var root = rootOf(spec);
   var subs = {};
@@ -87,14 +93,13 @@ export function initExplorer(spec) {
   }
 
   // an image says its own size once the browser has it
-  if (imageEl) {
-    imageEl.addEventListener("load", function () {
-      var file = spec.files.filter(function (f) { return f.url === imageEl.src; })[0];
-      if (!file || !imageEl.naturalWidth) return;
-      subs[file.path].textContent =
-        imageEl.naturalWidth + " × " + imageEl.naturalHeight + " · " + file.sub;
-    });
+  function measured() {
+    var file = spec.files.filter(function (f) { return f.url === imageEl.src; })[0];
+    if (!file || !imageEl.naturalWidth || !subs[file.path]) return;
+    subs[file.path].textContent =
+      imageEl.naturalWidth + " × " + imageEl.naturalHeight + " · " + file.sub;
   }
+  if (imageEl) imageEl.addEventListener("load", measured);
 
   var lastFolder = null;
   spec.files.forEach(function (file) {
@@ -121,4 +126,17 @@ export function initExplorer(spec) {
 
   var opening = spec.files.filter(function (f) { return f.open; })[0] || spec.files[0];
   show(opening);
+
+  return function () {
+    if (imageEl) {
+      imageEl.removeEventListener("load", measured);
+      imageEl.removeAttribute("src");
+    }
+    showing = null;
+    list.textContent = "";
+    codeView.textContent = "";
+    if (readmeView) readmeView.textContent = "";
+    if (imageView) imageView.hidden = true;
+    if (viewerMeta) viewerMeta.textContent = "";
+  };
 }
