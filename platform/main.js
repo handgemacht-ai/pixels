@@ -14,6 +14,7 @@ import { initSheet } from "./ui/sheet.js";
 import { initControls } from "./ui/controls.js";
 import { initStats } from "./ui/stats.js";
 import { initSidebar } from "./ui/sidebar.js";
+import { initFilm } from "./ui/film.js";
 
 var stageEl = document.getElementById("stage");
 var errorEl = document.getElementById("error");
@@ -53,6 +54,7 @@ async function mount(spec) {
   put(linkShell(spec, api));
   put(initControls(spec, api));
   put(initStats(spec, api));
+  put(initFilm(spec, api));
   document.dispatchEvent(new CustomEvent("pixels:ready", { detail: { animation: spec.id } }));
 }
 

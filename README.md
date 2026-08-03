@@ -33,12 +33,14 @@ platform/runtime.js     the clock, the drawing-path switch, stage rebuilds
 platform/params.js      the live knob values, built from the declarations
 platform/surface.js     the PixiJS pixel surface offered to drawing paths
 platform/metrics.js     the numbers a page can actually measure
+platform/gif.js         a GIF89a writer, used by the page and by the tools
+platform/export.js      films the animation as it stands and hands over the file
 platform/ui/            switcher, controls, stats strip, file browser, sheet player, furniture
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
 tools/poster.mjs        writes the share image, the icons and the switcher stills
-tools/gif.mjs           films a whole run and writes it out as an animated GIF
-tools/lib/              the shared bits: the seeded page, and a GIF writer
+tools/gif.mjs           films a whole run at its defaults and writes out the committed GIF
+tools/lib/page.mjs      the seeded page the generators drive
 assets/                 those generated images, committed
 ```
 
@@ -207,11 +209,14 @@ says why under the stats, and carries on with the others. If none start, the pag
   how many steps into a run the frame is taken, `spot` where to start that run, `backend` which
   path draws it, and `icon` a square cut out of the same frame for the favicons, in stage pixels.
   All are optional; without them the platform takes a dozen steps into a centred run on the default
-  path and cuts the middle of the stage. `film` says how many steps a whole run takes, how far to
-  magnify it, and where the GIF it makes lives — `assets/<id>.gif` unless the animation says
-  otherwise. Declaring it puts a GIF link in the header. The runtime exposes the mechanism as
-  `window.pixels.poster({ step })`, which holds the clock still, runs the animation forward by hand
-  and hands back a canvas.
+  path and cuts the middle of the stage. `film` says how long a whole run is, how far to magnify it
+  for the committed copy, and where that copy lives — `assets/<id>.gif` unless the animation says
+  otherwise. `film.steps` may be `knob("someKey")`, and `film.cycles` multiplies it, which is how
+  the export button knows to film a longer blast when the blast-length knob has been moved.
+  Declaring `film` puts the GIF button in the header. The runtime exposes both mechanisms as
+  `window.pixels.poster({ step })`, which holds the clock still and hands back one canvas, and
+  `window.pixels.record({ steps, onFrame })`, which walks a whole run and hands over each frame as
+  it is drawn.
 
 ## The share image and the icons
 
@@ -238,9 +243,24 @@ site-level, so one animation's poster stands for the site.
 
 ## The animated GIF
 
-`assets/fire-explosion.gif` is the same run, filmed rather than posed: every step of a centred
-detonation, magnified four times, twelve frames a second, looping. `assets/dog-walk.gif` is two
-strides of the dog, filmed the same way.
+The **GIF** button beside the stage does not hand out a file somebody made earlier. It films the
+animation as it stands — the knobs where the visitor left them, the drawing path in use, the
+cadence on the clock — and writes the file in the browser, out of `platform/gif.js`, the same
+encoder the command-line tool uses. Nothing is fetched and nothing is uploaded. The button counts
+the steps on its own face while it works and the file arrives as `<animation-id>.gif`.
+
+How long a run is comes off the animation's own declaration read through the knobs, so a longer
+blast or a longer stride films for longer: the explosion's film is its blast-length knob, the dog's
+is two of its stride knob. The magnification is a whole number chosen so the file lands near 640
+pixels wide, and no capture runs past 150 frames — the sliders cannot reach that, but the ceiling
+is there so no animation can ask the browser for a film it cannot hold. When it bites, the button
+says so.
+
+Each capture borrows the random source and seeds it, so the same knobs give the same file twice
+running.
+
+`assets/fire-explosion.gif` and `assets/dog-walk.gif` are the same thing made ahead of time, at the
+declared defaults, so this file and the social preview have something to show:
 
 ```
 node tools/gif.mjs                            regenerate assets/<id>.gif
@@ -249,11 +269,10 @@ node tools/gif.mjs --scale 6                  bigger blocks
 node tools/gif.mjs --out /tmp/try.gif         somewhere else
 ```
 
-The palette goes straight into the file's colour table, so the colours in the file are the ones the
-animation draws with — nothing is dithered, resampled or reduced, and a frame that matches the one
-before it is stored as the rectangle that changed. It is deterministic in the same way the poster
-is: the same seed gives the same bytes. The header links to it, and both are the images at the top
-of this file.
+Either way the palette goes straight into the file's colour table, so the colours in the file are
+the ones the animation draws with — nothing is dithered, resampled or reduced, and a frame that
+matches the one before it is stored as the rectangle that changed. The command-line run is
+deterministic in the same way the poster is: the same seed gives the same bytes.
 
 ## What the stats panel measures
 

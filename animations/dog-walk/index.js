@@ -153,7 +153,7 @@ export default defineAnimation({
     step: 5,
     icon: { x: 72, y: 34, size: 48 },
     // two whole strides, which is exactly where the walk comes back round
-    film: { steps: 24, scale: 4 }
+    film: { steps: knob("strideSteps"), cycles: 2, scale: 4 }
   },
 
   create: function (ctx) {

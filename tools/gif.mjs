@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT, openSite } from "./lib/page.mjs";
-import { encodeGif, delaysForRate } from "./lib/gif.mjs";
+import { encodeGif, delaysForRate, magnify } from "../platform/gif.js";
 
 function readArgs(argv) {
   var out = { out: null, scale: null, fps: null, steps: null, animation: null };
@@ -100,26 +100,17 @@ function film(options) {
 
 // ------------------------------ back in node -------------------------
 
-function magnify(pixels, width, height, scale) {
-  var wide = width * scale;
-  var out = new Uint8Array(wide * height * scale);
-  for (var y = 0; y < height; y++) {
-    var row = new Uint8Array(wide);
-    for (var x = 0; x < width; x++) {
-      var value = pixels[y * width + x];
-      row.fill(value, x * scale, x * scale + scale);
-    }
-    for (var r = 0; r < scale; r++) out.set(row, (y * scale + r) * wide);
-  }
-  return out;
-}
-
 async function main() {
   var args = readArgs(process.argv.slice(2));
   var site = await openSite({ animation: args.animation });
 
   var plan = await site.page.evaluate(function () {
-    return { id: window.pixels.id, film: window.pixels.film };
+    return {
+      id: window.pixels.id,
+      film: window.pixels.film,
+      // the run as long as the animation's own defaults make it
+      steps: window.pixels.film ? window.pixels.filmSteps() : 0
+    };
   });
   if (!plan.film) {
     console.error("This animation declares no poster.film, so there is no run to film.");
@@ -128,7 +119,7 @@ async function main() {
   }
 
   var shot = await site.page.evaluate(film, {
-    steps: args.steps || plan.film.steps,
+    steps: args.steps || plan.steps,
     backend: null
   });
   await site.close();
@@ -154,7 +145,7 @@ async function main() {
   // links to it from
   var out = args.out || path.join(ROOT, plan.film.file);
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, made.buffer);
+  fs.writeFileSync(out, Buffer.from(made.bytes));
 
   console.log(JSON.stringify({
     wrote: path.relative(ROOT, out),
@@ -166,7 +157,7 @@ async function main() {
     fps: fps,
     delaysCs: delays.slice(0, 6).join(",") + " …",
     totalSeconds: Number((delays.reduce(function (a, b) { return a + b; }, 0) / 100).toFixed(3)),
-    bytes: made.buffer.length,
+    bytes: made.bytes.length,
     palette: shot.palette.map(function (e) { return e.name; }),
     coloursOutsideThePalette: shot.strays,
     problems: site.problems

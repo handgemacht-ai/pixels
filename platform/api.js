@@ -207,7 +207,11 @@ export function defineAnimation(spec) {
     must(poster.icon.size > 0, "poster.icon needs x, y and size, in stage pixels");
   }
   if (poster.film) {
-    must(poster.film.steps > 0, "poster.film.steps is how many steps a whole run takes");
+    must(typeof poster.film.steps !== "number" || poster.film.steps > 0,
+      "poster.film.steps is how many steps a whole run takes");
+    checkBinding(poster.film.steps, keys, "poster.film.steps");
+    must(poster.film.cycles === undefined || poster.film.cycles > 0,
+      "poster.film.cycles is how many of those runs the film holds");
     must(poster.film.scale > 0 && poster.film.scale === Math.round(poster.film.scale),
       "poster.film.scale is a whole-number magnification");
   }
@@ -248,10 +252,14 @@ export function defineAnimation(spec) {
       // the small still the switcher lists this animation with, cut from the
       // same posed frame
       thumb: poster.thumb || "assets/" + spec.id + "-thumb.png",
-      // a whole run, filmed step by step, and where the film it makes lives
+      // A whole run, filmed step by step, and where the pre-made copy of it
+      // lives. `steps` may be knob("someKey"), which is what lets the export
+      // button on the page film exactly as long a run as the knobs now say —
+      // `cycles` many of them, for animations whose run is one lap of a loop.
       film: poster.film
         ? {
-          steps: poster.film.steps,
+          steps: checkBinding(poster.film.steps, keys, "poster.film.steps"),
+          cycles: poster.film.cycles === undefined ? 1 : poster.film.cycles,
           scale: poster.film.scale,
           file: poster.film.file || "assets/" + spec.id + ".gif"
         }

@@ -62,21 +62,6 @@ export function initShell(spec) {
     undo.push(function () { button.removeEventListener("click", press); });
   }
 
-  // ---------------- the filmed run, if there is one to hand out --------
-  var film = document.getElementById("film-link");
-  if (film) {
-    if (spec.poster.film) {
-      film.href = spec.poster.film.file;
-      film.textContent = "GIF";
-      film.title = "the whole " + spec.action.noun + " as an animated GIF · " +
-        spec.poster.film.steps + " frames";
-      film.hidden = false;
-    } else {
-      film.hidden = true;
-      film.removeAttribute("href");
-    }
-  }
-
   // ---------------- palette strip, straight off the declaration --------
   var swatches = empty("swatches");
   if (swatches && spec.palette) {

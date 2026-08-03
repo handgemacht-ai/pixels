@@ -1,7 +1,44 @@
+"use strict";
+
 // A GIF89a writer, written out by hand because the picture asks for so little:
-// eight colours, whole-pixel blocks, no dithering, no colour reduction. Every
-// frame arrives as one byte per pixel — an index into the animation's own
+// a handful of colours, whole-pixel blocks, no dithering, no colour reduction.
+// Every frame arrives as one byte per pixel — an index into the animation's own
 // palette — and comes out the other side as exactly those colours.
+//
+// Nothing here touches the browser or the file system, so the page and the
+// command-line tools write the same bytes out of the same code.
+
+// A growable byte sink. The parts are pushed as arrays or typed arrays and
+// joined once at the end, which is cheaper than concatenating as we go.
+function byteSink() {
+  var parts = [];
+  var total = 0;
+  return {
+    push: function (bytes) {
+      parts.push(bytes);
+      total += bytes.length;
+    },
+    ascii: function (text) {
+      var out = new Uint8Array(text.length);
+      for (var i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xFF;
+      parts.push(out);
+      total += out.length;
+    },
+    short: function (value) {
+      parts.push(new Uint8Array([value & 0xFF, (value >> 8) & 0xFF]));
+      total += 2;
+    },
+    finish: function () {
+      var out = new Uint8Array(total);
+      var at = 0;
+      for (var i = 0; i < parts.length; i++) {
+        out.set(parts[i], at);
+        at += parts[i].length;
+      }
+      return out;
+    }
+  };
+}
 
 // Codes are packed least-significant bit first, and the stream is cut into
 // blocks of at most 255 bytes with a length in front of each.
@@ -83,7 +120,7 @@ function compress(indices, minCodeSize) {
     for (var j = 0; j < chunk.length; j++) out.push(chunk[j]);
   }
   out.push(0);
-  return Buffer.from(out);
+  return new Uint8Array(out);
 }
 
 // The smallest rectangle that changed since the frame before. Everything
@@ -114,12 +151,6 @@ function crop(pixels, width, box) {
   return out;
 }
 
-function short(value) {
-  var b = Buffer.alloc(2);
-  b.writeUInt16LE(value, 0);
-  return b;
-}
-
 // Twelve frames a second is not a whole number of hundredths, so the delays
 // are worked out from a running total: 8, 9, 8, 8, 9 … which averages exactly
 // right instead of drifting a frame every few seconds.
@@ -127,6 +158,22 @@ export function delaysForRate(count, fps) {
   var out = [];
   for (var i = 0; i < count; i++) {
     out.push(Math.round((i + 1) * 100 / fps) - Math.round(i * 100 / fps));
+  }
+  return out;
+}
+
+// One drawn pixel becomes a square block of them. Whole numbers only, so
+// nothing is ever resampled and no ninth colour can appear along an edge.
+export function magnify(pixels, width, height, scale) {
+  if (scale === 1) return pixels;
+  var wide = width * scale;
+  var out = new Uint8Array(wide * height * scale);
+  var row = new Uint8Array(wide);
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      row.fill(pixels[y * width + x], x * scale, x * scale + scale);
+    }
+    for (var r = 0; r < scale; r++) out.set(row, (y * scale + r) * wide);
   }
   return out;
 }
@@ -146,7 +193,7 @@ export function encodeGif(options) {
   // trimmed; the padding is never indexed
   var exponent = Math.max(1, Math.ceil(Math.log2(palette.length)));
   var slots = 1 << exponent;
-  var table = Buffer.alloc(slots * 3);
+  var table = new Uint8Array(slots * 3);
   palette.forEach(function (colour, i) {
     table[i * 3] = colour[0];
     table[i * 3 + 1] = colour[1];
@@ -154,20 +201,23 @@ export function encodeGif(options) {
   });
   var minCodeSize = Math.max(2, exponent);
 
-  var parts = [];
-  parts.push(Buffer.from("GIF89a", "ascii"));
-  parts.push(short(width), short(height));
-  parts.push(Buffer.from([
+  var sink = byteSink();
+  sink.ascii("GIF89a");
+  sink.short(width);
+  sink.short(height);
+  sink.push(new Uint8Array([
     0x80 | 0x70 | (exponent - 1),
     options.background === undefined ? 0 : options.background,
     0
   ]));
-  parts.push(table);
+  sink.push(table);
 
   // "play it again", for as long as anyone is looking
-  parts.push(Buffer.from([0x21, 0xFF, 0x0B]));
-  parts.push(Buffer.from("NETSCAPE2.0", "ascii"));
-  parts.push(Buffer.from([0x03, 0x01]), short(0), Buffer.from([0x00]));
+  sink.push(new Uint8Array([0x21, 0xFF, 0x0B]));
+  sink.ascii("NETSCAPE2.0");
+  sink.push(new Uint8Array([0x03, 0x01]));
+  sink.short(0);
+  sink.push(new Uint8Array([0x00]));
 
   var previous = null;
   var boxes = [];
@@ -179,14 +229,20 @@ export function encodeGif(options) {
 
     // disposal 1: leave the frame standing, so the next one only has to paint
     // what moved
-    parts.push(Buffer.from([0x21, 0xF9, 0x04, 0x04]), short(delays[i]), Buffer.from([0x00, 0x00]));
-    parts.push(Buffer.from([0x2C]), short(box.x), short(box.y),
-      short(box.width), short(box.height), Buffer.from([0x00]));
-    parts.push(compress(crop(pixels, width, box), minCodeSize));
+    sink.push(new Uint8Array([0x21, 0xF9, 0x04, 0x04]));
+    sink.short(delays[i]);
+    sink.push(new Uint8Array([0x00, 0x00]));
+    sink.push(new Uint8Array([0x2C]));
+    sink.short(box.x);
+    sink.short(box.y);
+    sink.short(box.width);
+    sink.short(box.height);
+    sink.push(new Uint8Array([0x00]));
+    sink.push(compress(crop(pixels, width, box), minCodeSize));
 
     previous = pixels;
   });
 
-  parts.push(Buffer.from([0x3B]));
-  return { buffer: Buffer.concat(parts), boxes: boxes, minCodeSize: minCodeSize, slots: slots };
+  sink.push(new Uint8Array([0x3B]));
+  return { bytes: sink.finish(), boxes: boxes, minCodeSize: minCodeSize, slots: slots };
 }

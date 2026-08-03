@@ -58,17 +58,25 @@ body {
 #detonate:hover { filter: brightness(1.08); }
 #detonate:active { transform: translateY(1px); }
 .film-link {
+  font: inherit;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--dim);
+  background: none;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 8px 14px;
   text-decoration: none;
+  cursor: pointer;
+  /* the face counts frames while it films, so it must not jump about */
+  min-width: 74px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
-.film-link:hover { color: var(--hot); border-color: var(--hot); }
+.film-link:hover:not(:disabled) { color: var(--hot); border-color: var(--hot); }
+.film-link:disabled { cursor: progress; color: var(--hot); border-color: var(--hot); }
 
 .page {
   display: grid;

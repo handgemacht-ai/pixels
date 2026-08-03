@@ -44,8 +44,9 @@ export default defineAnimation({
     step: 22,
     backend: "javascript",
     icon: { x: 48, y: 22, size: 64 },
-    // and the whole blast, all fifty steps of it, at four times the size
-    film: { steps: 50, scale: 4 }
+    // and the whole blast, however long the blast-length knob has made it, at
+    // four times the size
+    film: { steps: knob("life"), scale: 4 }
   },
 
   // ---------------------------- the knobs ------------------------------

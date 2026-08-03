@@ -158,6 +158,39 @@ export async function startAnimation(spec, stageEl) {
   // held still, the run is started from scratch and stepped forward by hand,
   // so a page loaded with a seeded random source poses the same frame every
   // time. Nothing here reads any of the animation's reference material.
+  // What the drawing path has just produced, on a canvas of its own with the
+  // backdrop underneath it. The frame is transparent where nothing was drawn,
+  // so it is laid over the backdrop rather than written into it.
+  function snapshot() {
+    var canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext("2d");
+    if (backdrop) ctx.drawImage(backdrop, 0, 0);
+    var layer = document.createElement("canvas");
+    layer.width = width;
+    layer.height = height;
+    var layerCtx = layer.getContext("2d");
+    var image = layerCtx.createImageData(width, height);
+    image.data.set(current.instance.readFrame());
+    layerCtx.putImageData(image, 0, 0);
+    ctx.drawImage(layer, 0, 0);
+    return canvas;
+  }
+
+  // Put the animation back where the clock left it, after the clock has been
+  // held still to pose or film something.
+  function release(previous) {
+    if (current !== previous) { current = previous; showMode(); }
+    clear(steps);
+    clear(uploads);
+    clear(passes);
+    carried = 0;
+    restart();
+    advance();
+    posing = false;
+  }
+
   function pose(options) {
     var wanted = options || {};
     var step = wanted.step === undefined ? spec.poster.step : wanted.step;
@@ -175,30 +208,8 @@ export async function startAnimation(spec, stageEl) {
     current.instance.draw();
     if (current.instance.upload) current.instance.upload();
 
-    var canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    var ctx = canvas.getContext("2d");
-    if (backdrop) ctx.drawImage(backdrop, 0, 0);
-    // the frame is transparent where nothing was drawn, so it is laid over the
-    // backdrop rather than written into it
-    var layer = document.createElement("canvas");
-    layer.width = width;
-    layer.height = height;
-    var layerCtx = layer.getContext("2d");
-    var image = layerCtx.createImageData(width, height);
-    image.data.set(current.instance.readFrame());
-    layerCtx.putImageData(image, 0, 0);
-    ctx.drawImage(layer, 0, 0);
-
-    if (current !== previous) { current = previous; showMode(); }
-    clear(steps);
-    clear(uploads);
-    clear(passes);
-    carried = 0;
-    restart();
-    advance();
-    posing = false;
+    var canvas = snapshot();
+    release(previous);
 
     return {
       canvas: canvas,
@@ -208,6 +219,59 @@ export async function startAnimation(spec, stageEl) {
       drawnBy: drawnBy.id,
       icon: spec.poster.icon
     };
+  }
+
+  // ------------------------- a whole run, filmed ----------------------
+  // The same trick as posing, but the run is started once and walked forward,
+  // so filming n steps costs n steps rather than n². The clock stands still
+  // throughout; every few frames the loop hands the browser back to itself so
+  // the page can show how far it has got.
+  function record(options) {
+    var wanted = options || {};
+    var count = Math.max(1, Math.round(wanted.steps || filmSteps()));
+    var spot = wanted.spot || spec.poster.spot;
+    var previous = current;
+    var drawnBy = chosen(wanted.backend || current.id);
+    var onFrame = wanted.onFrame || function () {};
+    var onStep = wanted.onStep || function () {};
+
+    posing = true;
+    if (drawnBy !== current) { current = drawnBy; showMode(); }
+    scene.reset(spot || undefined);
+
+    var at = 0;
+    function walk(resolve, reject) {
+      try {
+        var until = Math.min(count, at + 4);
+        while (at < until) {
+          current.instance.draw();
+          if (current.instance.upload) current.instance.upload();
+          onFrame(snapshot(), at, count);
+          scene.advance();
+          at += 1;
+        }
+        onStep(at, count);
+        if (at < count) {
+          window.setTimeout(function () { walk(resolve, reject); }, 0);
+          return;
+        }
+        release(previous);
+        resolve({ steps: count, width: width, height: height, drawnBy: drawnBy.id });
+      } catch (err) {
+        release(previous);
+        reject(err);
+      }
+    }
+
+    return new Promise(function (resolve, reject) { walk(resolve, reject); });
+  }
+
+  // How long a whole run is right now — the declaration read through the knobs,
+  // so a longer blast or a longer stride films for longer.
+  function filmSteps() {
+    var film = spec.poster.film;
+    if (!film) return 0;
+    return Math.max(1, Math.round(readBinding(film.steps, P) * film.cycles));
   }
 
   // Redone from scratch when the stage size changes: new buffers, a new
@@ -302,6 +366,7 @@ export async function startAnimation(spec, stageEl) {
     palette: spec.palette,
     // how a whole run is filmed, if the animation says it can be
     film: spec.poster.film,
+    filmSteps: filmSteps,
     cadence: cadence,
     mode: "",
     backends: backends.map(function (entry) {
@@ -347,6 +412,9 @@ export async function startAnimation(spec, stageEl) {
     // the declared poster frame, on a canvas; options override the
     // declaration, which is how the generator hunts for a better step
     poster: pose,
+
+    // a whole run, one canvas per step, handed over as they are drawn
+    record: record,
 
     // Put the animation away: stop its clock, hand back its drawing paths and
     // its surface, and leave the stage empty for the next one.
