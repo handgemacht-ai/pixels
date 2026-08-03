@@ -41,9 +41,12 @@ export function serve() {
   });
 }
 
+export var DEFAULT_SEED = 1234567;
+
 // The seeded random source, installed before any of the page's own code runs.
-export function seedScript() {
-  var state = 1234567 >>> 0;
+export function seedScript(seed) {
+  var start = (seed || 1234567) >>> 0;
+  var state = start;
   Math.random = function () {
     state = (state + 0x6D2B79F5) >>> 0;
     var t = state;
@@ -51,7 +54,7 @@ export function seedScript() {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  window.__reseed = function () { state = 1234567 >>> 0; };
+  window.__reseed = function () { state = start; };
 }
 
 export function playwright() {
@@ -75,7 +78,7 @@ export async function openSite(options) {
   page.on("pageerror", function (e) { problems.push("pageerror: " + e.message); });
   page.on("console", function (m) { if (m.type() === "error") problems.push("console: " + m.text()); });
 
-  await page.addInitScript(seedScript);
+  await page.addInitScript(seedScript, (options && options.seed) || DEFAULT_SEED);
   await page.goto("http://127.0.0.1:" + served.port + "/index.html" +
     ((options && options.animation) ? "?animation=" + options.animation : ""), { waitUntil: "load" });
   await page.waitForFunction("!!window.pixels", null, { timeout: 40000 });

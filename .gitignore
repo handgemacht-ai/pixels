@@ -7,6 +7,10 @@ node_modules/
 npm-debug.log*
 package-lock.json
 
+# contact sheets and anything else the review tools write: working artifacts,
+# looked at once and thrown away, never part of the site
+tools/out/
+
 # editors and operating systems
 .DS_Store
 Thumbs.db

@@ -40,7 +40,9 @@ animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
 tools/poster.mjs        writes the share image, the icons and the switcher stills
 tools/gif.mjs           films a whole run at its defaults and writes out the committed GIF
+tools/grid.mjs          contact sheets for looking at a run, and for holding it against the reference
 tools/lib/page.mjs      the seeded page the generators drive
+tools/out/              where the contact sheets land · not committed
 assets/                 those generated images, committed
 ```
 
@@ -218,6 +220,37 @@ says why under the stats, and carries on with the others. If none start, the pag
   `window.pixels.record({ steps, onFrame })`, which walks a whole run and hands over each frame as
   it is drawn.
 
+### Iterating on one
+
+An animation that only exists in motion is hard to work on: by the time you have seen a frame it
+has gone. `tools/grid.mjs` lays a whole run out flat instead — one PNG, one cell per step, the
+frames the page actually draws, posed out of a seeded run so the same command gives the same sheet
+every time. Sheets land in `tools/out/`, which is not committed: they are for looking at, not for
+keeping.
+
+```
+node tools/grid.mjs --animation dog-walk
+node tools/grid.mjs --animation dog-walk --set legLength=20,strideLength=34,skeleton=on \
+  --steps 0-11:2 --columns 3 --scale 3
+node tools/grid.mjs --animation dog-walk --compare
+node tools/grid.mjs --animation fire-explosion --compare --scale 2
+node tools/grid.mjs --animation fire-explosion --backend shaders --from 6 --count 8 --stride 3
+```
+
+`--set` moves knobs before anything is drawn and names them in the caption, so a sheet always says
+what made it; a key the animation does not declare is an error rather than a silently ignored
+typo. `--steps` takes `0-49:2` for a range and a stride or `0,4,8` for a list, and `--from`,
+`--count` and `--stride` do the same thing one flag at a time. `--columns`, `--scale`,
+`--no-labels`, `--backend`, `--seed` and `--out` do what they say; `node tools/grid.mjs --help`
+prints the lot.
+
+**`--compare` is the one to reach for.** It lays the animation's registered reference sheet out
+above its own frames, column for column: a reference row, then the live row it should match, then
+the next pair. The reference is stepped exactly the way the player beside the stage steps it — one
+frame per step, wrapping when the sheet is shorter than the run — so the two rows are showing the
+same instant, and a run that has drifted out of its reference's arc shows up as a diagonal drift
+down the sheet rather than as a feeling that something is off.
+
 ## The share image and the icons
 
 `assets/og.png`, the favicons and `favicon.ico` are frames of the animation, not artwork and not
@@ -312,6 +345,24 @@ upload of the repository root:
 ```
 npx wrangler pages deploy . --project-name pixels
 ```
+
+Everything under the root goes up, `.gitignore` or not, so empty `tools/out/` before deploying
+rather than publishing a pile of contact sheets.
+
+**A deploy that adds new files needs the edge cache cleared afterwards.** Pages serves the site
+with `cache-control: max-age=14400`, and a request that arrives for a path while the new deploy is
+still landing on the custom domain gets the 404 fallback — the page's own HTML — cached under that
+path for four hours. Every visitor then sees a site whose modules will not load, while the
+`*.pages.dev` deployment URL is perfectly fine, which makes it easy to miss. Purge the paths that
+were added or changed:
+
+```
+curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/purge_cache" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+  --data '{"files":["https://pixels.handgemacht.ai/platform/new-thing.js"]}'
+```
+
+Then load the site and check the console, rather than trusting the deploy's own success message.
 
 ## Licence
 
