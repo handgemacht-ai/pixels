@@ -137,13 +137,14 @@ main {
 }
 .switch[aria-current="true"] .switch-words b { color: var(--hot); }
 .switch-words span {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font-family: var(--mono);
   font-size: 10px;
+  line-height: 1.35;
   color: var(--dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .panel {
@@ -208,18 +209,18 @@ main {
 #error[hidden] { display: none; }
 
 .legend {
-  height: 26px;
-  line-height: 26px;
-  overflow: hidden;
+  min-height: 26px;
+  line-height: 1.55;
   border-top: 1px solid var(--line);
-  padding: 0 14px;
+  padding: 5px 14px;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.04em;
   color: var(--dim);
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
+/* the palette strip is about the animation, not about the photograph it
+   happens to sit under, so it says so */
+.palette-note { border-top: 0; padding-top: 3px; }
 
 .ref { aspect-ratio: 16 / 10; background: #080808; }
 .ref img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -251,8 +252,16 @@ main {
   gap: 1px;
   background: var(--line);
 }
+/* an animation with three readings should not have them spread across a
+   metre of panel: the readings keep their size and the rest of the row is
+   filled in rather than left as a hole */
+.stats::after {
+  content: "";
+  flex: 999 1 0;
+  background: var(--panel);
+}
 .stats + .stats { border-top: 1px solid var(--line); }
-.stat { flex: 1 1 108px; background: var(--panel); padding: 7px 10px 8px; min-width: 0; }
+.stat { flex: 1 1 108px; max-width: 260px; background: var(--panel); padding: 7px 10px 8px; min-width: 0; }
 .stat b {
   display: block;
   font-family: var(--mono);
@@ -264,8 +273,14 @@ main {
   text-overflow: ellipsis;
 }
 .stat.env { flex-basis: 150px; }
-.stat.env b { color: var(--ink); font-size: 12.5px; line-height: 1.35; }
-.stat.span2 { flex-basis: 300px; }
+.stat.env b {
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.stat.span2 { flex-basis: 300px; max-width: 420px; }
 .stat span {
   display: block;
   font-family: var(--mono);
@@ -482,10 +497,10 @@ main {
 @media (max-width: 1120px) {
   .page { grid-template-columns: minmax(0, 1fr); }
   .rail { position: static; }
-  .switcher { flex-direction: row; overflow-x: auto; }
-  .switch { width: auto; flex: 0 0 auto; }
-  .switch-words b, .switch-words span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .switch-words { max-width: 190px; }
+  .switcher { flex-direction: row; flex-wrap: wrap; }
+  .switch { width: auto; flex: 1 1 210px; min-width: 0; }
+  .switch-words { min-width: 0; }
+  .switch-words span { white-space: normal; }
 }
 
 @media (max-width: 900px) {

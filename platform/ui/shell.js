@@ -64,6 +64,10 @@ export function initShell(spec) {
 
   // ---------------- palette strip, straight off the declaration --------
   var swatches = empty("swatches");
+  var paletteNote = document.getElementById("palette-legend");
+  if (paletteNote) paletteNote.textContent = spec.palette ? spec.palette.title : "";
+  if (paletteNote) paletteNote.hidden = !spec.palette;
+  if (swatches) swatches.hidden = !spec.palette;
   if (swatches && spec.palette) {
     swatches.title = spec.palette.title;
     Object.keys(spec.palette.colours).forEach(function (name) {

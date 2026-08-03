@@ -13,8 +13,8 @@ import { createJavascriptBackend } from "./render/cpu.js";
 
 export default defineAnimation({
   id: "dog-walk",
-  title: "Procedural pixel-art mastiff",
-  tagline: "a skeleton, a walking gait, and the plate it is measured against",
+  title: "Mastiff walking, solved from a skeleton",
+  tagline: "160 x 100 pixels · eight colours · held against Muybridge, 1887",
   base: new URL(".", import.meta.url).href,
   action: { verb: "Restart", noun: "stride" },
 
@@ -46,18 +46,18 @@ export default defineAnimation({
     { group: "gait", key: "trot", label: "trot", type: "toggle",
       default: false, applies: "next" },
 
-    { group: "frame", key: "legLength", label: "leg segment", default: 19,
-      min: 13, max: 24, step: 1, unit: "px", applies: "live" },
-    { group: "frame", key: "bodyLength", label: "back", default: 62,
-      min: 44, max: 76, step: 1, unit: "px", applies: "live" },
-    { group: "frame", key: "chest", label: "chest depth", default: 18,
-      min: 12, max: 24, step: 1, unit: "px", applies: "live" },
+    { group: "frame", key: "legLength", label: "leg segment", default: 20,
+      min: 14, max: 25, step: 1, unit: "px", applies: "live" },
+    { group: "frame", key: "bodyLength", label: "back", default: 65,
+      min: 46, max: 80, step: 1, unit: "px", applies: "live" },
+    { group: "frame", key: "chest", label: "chest depth", default: 19,
+      min: 13, max: 25, step: 1, unit: "px", applies: "live" },
     { group: "frame", key: "limb", label: "limb thickness", default: 8,
       min: 5, max: 12, step: 1, unit: "px", applies: "live" },
-    { group: "frame", key: "neckLength", label: "neck", default: 14,
-      min: 9, max: 20, step: 1, unit: "px", applies: "live" },
-    { group: "frame", key: "headSize", label: "head", default: 18,
-      min: 12, max: 23, step: 1, unit: "px", applies: "live" },
+    { group: "frame", key: "neckLength", label: "neck", default: 15,
+      min: 10, max: 21, step: 1, unit: "px", applies: "live" },
+    { group: "frame", key: "headSize", label: "head", default: 19,
+      min: 13, max: 24, step: 1, unit: "px", applies: "live" },
     { group: "frame", key: "topline", label: "croup drop", default: 3.5,
       min: -1, max: 8, step: 0.5, unit: "px", applies: "live" },
 
@@ -110,8 +110,9 @@ export default defineAnimation({
     ],
     legend: "twelve exposures of one stride, held to the same point in the " +
       "stride as the dog beside them",
-    sourceLegend: "plate 706 of Animal Locomotion, 1887 · the mastiff Dread · " +
-      "public domain, scanned by the Boston Public Library"
+    sourceLegend: "plate 706 of Animal Locomotion, 1887 · captioned " +
+      "“Dog; trotting; interrupted; mastiff. Smith” · public domain, " +
+      "scanned by the Boston Public Library"
   },
 
   stats: [
@@ -159,8 +160,10 @@ export default defineAnimation({
   ],
 
   poster: {
-    step: 4,
-    icon: { x: 92, y: 26, size: 44 },
+    // mid-swing: all four legs are apart, so the far pair and the near pair
+    // are both legible in a still
+    step: 8,
+    icon: { x: 100, y: 18, size: 44 },
     // two whole strides, which is exactly where the walk comes back round
     film: { steps: knob("strideSteps"), cycles: 2, scale: 4 }
   },
