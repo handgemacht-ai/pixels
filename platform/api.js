@@ -181,6 +181,20 @@ export function defineAnimation(spec) {
 
   var action = spec.action || {};
 
+  // The still that stands in for the animation: a step of a seeded run, drawn
+  // by the animation itself. Never a piece of reference material — the poster
+  // is the thing the page actually draws.
+  var poster = spec.poster || {};
+  must(poster.step === undefined || (poster.step >= 0 && poster.step === Math.round(poster.step)),
+    "poster.step is a whole number of steps into a run");
+  if (poster.backend !== undefined) {
+    must(backendIds.indexOf(poster.backend) >= 0,
+      'poster.backend "' + poster.backend + '" is not one of the declared backends');
+  }
+  if (poster.icon) {
+    must(poster.icon.size > 0, "poster.icon needs x, y and size, in stage pixels");
+  }
+
   return {
     id: spec.id,
     title: spec.title,
@@ -205,6 +219,14 @@ export function defineAnimation(spec) {
     stats: normaliseStats(spec.stats, 'animation "' + spec.id + '"'),
     backends: backends,
     defaultBackend: defaultBackend,
+    poster: {
+      // a dozen steps in — about a second at the usual cadence, by which time
+      // most things have something to show
+      step: poster.step === undefined ? 12 : poster.step,
+      spot: poster.spot || null,
+      backend: poster.backend || defaultBackend,
+      icon: poster.icon || null
+    },
     create: spec.create
   };
 }

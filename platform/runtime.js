@@ -100,6 +100,7 @@ export async function startAnimation(spec, stageEl) {
   var carried = 0, sinceRun = 0;
   var shakeX = 0, shakeY = 0;
   var pendingGrab = null;
+  var posing = false;
   var ZERO = { x: 0, y: 0 };
 
   function advance() {
@@ -150,6 +151,60 @@ export async function startAnimation(spec, stageEl) {
     announce();
   }
 
+  // ------------------------- the poster frame -------------------------
+  // One step of a run, drawn by the animation itself and handed back on a
+  // canvas — what the share image and the favicon are cut from. The clock is
+  // held still, the run is started from scratch and stepped forward by hand,
+  // so a page loaded with a seeded random source poses the same frame every
+  // time. Nothing here reads any of the animation's reference material.
+  function pose(options) {
+    var wanted = options || {};
+    var step = wanted.step === undefined ? spec.poster.step : wanted.step;
+    var spot = wanted.spot || spec.poster.spot;
+    var previous = current;
+    var drawnBy = chosen(wanted.backend || spec.poster.backend);
+
+    posing = true;
+    if (drawnBy !== current) { current = drawnBy; showMode(); }
+
+    scene.reset(spot || undefined);
+    for (var i = 0; i < step; i++) advance();
+
+    var canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext("2d");
+    if (backdrop) ctx.drawImage(backdrop, 0, 0);
+    // the frame is transparent where nothing was drawn, so it is laid over the
+    // backdrop rather than written into it
+    var layer = document.createElement("canvas");
+    layer.width = width;
+    layer.height = height;
+    var layerCtx = layer.getContext("2d");
+    var image = layerCtx.createImageData(width, height);
+    image.data.set(current.instance.readFrame());
+    layerCtx.putImageData(image, 0, 0);
+    ctx.drawImage(layer, 0, 0);
+
+    if (current !== previous) { current = previous; showMode(); }
+    clear(steps);
+    clear(uploads);
+    clear(passes);
+    carried = 0;
+    restart();
+    advance();
+    posing = false;
+
+    return {
+      canvas: canvas,
+      width: width,
+      height: height,
+      step: step,
+      drawnBy: drawnBy.id,
+      icon: spec.poster.icon
+    };
+  }
+
   // Redone from scratch when the stage size changes: new buffers, a new
   // backdrop and a new texture at the new size.
   function rebuild() {
@@ -172,6 +227,8 @@ export async function startAnimation(spec, stageEl) {
 
   function tick() {
     window.requestAnimationFrame(tick);
+    // the clock stands still while a poster frame is being posed
+    if (posing) { lastTick = 0; return; }
     var now = clock();
     // a frame that arrives inside the clock's resolution reports 0ms; that
     // is a real zero, not a missing value, so never substitute a default
@@ -273,7 +330,11 @@ export async function startAnimation(spec, stageEl) {
 
     detonate: function (spot) { detonate(spot || null); },
 
-    capture: function (fn) { pendingGrab = fn; }
+    capture: function (fn) { pendingGrab = fn; },
+
+    // the declared poster frame, on a canvas; options override the
+    // declaration, which is how the generator hunts for a better step
+    poster: pose
   };
 
   current = chosen(spec.defaultBackend);

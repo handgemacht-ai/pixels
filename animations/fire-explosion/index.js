@@ -34,6 +34,18 @@ export default defineAnimation({
   cadence: knob("stepsPerSec"),
   replay: knob("replay"),
 
+  // The still the share image and the favicon are cut from: a blast dead
+  // centre, stepped forward by hand to the frame where the mass has rolled
+  // fully open and the shadowed hollow is at its clearest. Drawn by the
+  // JavaScript path, so the same frame comes out on any machine. The icon is
+  // the fireball itself, cut square at a size that halves and quarters
+  // exactly, so the icons downscale without softening a pixel.
+  poster: {
+    step: 22,
+    backend: "javascript",
+    icon: { x: 48, y: 22, size: 64 }
+  },
+
   // ---------------------------- the knobs ------------------------------
   // Every number the control panel can move, at the values the animation was
   // tuned to. Leave them all alone and the effect is exactly what it was

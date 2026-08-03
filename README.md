@@ -25,6 +25,8 @@ platform/metrics.js     the numbers a page can actually measure
 platform/ui/            controls, stats strip, file browser, sheet player, furniture
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
+tools/poster.mjs        writes the share image and the icons from a real frame
+assets/                 those generated images, committed
 ```
 
 `?animation=<id>` picks one out of the registry; without it the first is used.
@@ -119,7 +121,7 @@ is copied, so a knob moved on screen is read on the next step.
 ```js
 {
   detonate(spot),   // start a run — spot is {x, y} in stage pixels, or nothing for its own choice
-  reset(),          // clean start: used at boot, after a resize, after a change of drawing path
+  reset(spot),      // clean start: at boot, after a resize, after a change of drawing path
   advance(),        // one step forward
   offset(),         // optional — {x, y}, a whole-pixel shift the frame is laid down at
   stats(),          // optional — the numbers declared in `stats`
@@ -173,6 +175,31 @@ says why under the stats, and carries on with the others. If none start, the pag
 - **`files`** — `[{ path, sub, meta, open, alt, caption, pixelated }]`, the list the file browser
   shows. Paths are relative to the animation's folder and are fetched from the server, so what is
   on screen is what is being run. Only these files appear; nothing of the platform does.
+- **`poster`** — which frame stands in for the animation as a still:
+  `{ step, spot, backend, icon: { x, y, size } }`. `step` is how many steps into a run the frame
+  is taken, `spot` where to start that run, `backend` which path draws it, and `icon` a square cut
+  out of the same frame for the favicons, in stage pixels. All four are optional; without them the
+  platform takes a dozen steps into a centred run on the default path and cuts the middle of the
+  stage. The runtime exposes it as `window.pixels.poster({ step })`, which holds the clock still,
+  runs the animation forward by hand and hands back a canvas.
+
+## The share image and the icons
+
+`assets/og.png`, the favicons and `favicon.ico` are frames of the animation, not artwork and not
+reference material: the generator boots the real page with a seeded random source, poses the
+declared poster frame, and cuts the images out of it at whole-number scales so no pixel is
+softened. They are committed, because the site is static.
+
+```
+node tools/poster.mjs                              regenerate everything
+node tools/poster.mjs --contact sheet.png          contact sheet of candidate steps
+node tools/poster.mjs --step 26                    try a step without changing the declaration
+```
+
+It needs Playwright with Chromium (`npm i playwright && npx playwright install chromium`) and
+serves the repository itself on a loopback port. The same seed and the same step give the same
+bytes every run. The `og:` and `twitter:` tags in `index.html` point at the result; they are
+site-level, so one animation's poster stands for the site.
 
 ## What the stats panel measures
 

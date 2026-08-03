@@ -37,10 +37,12 @@ export function createSimulation() {
       else fire(VIEW_W * rand(0.4, 0.6), GROUND);
     },
 
-    // A clean start: nothing left burning, one blast dead centre.
-    reset: function () {
+    // A clean start: nothing left burning, one blast dead centre — or
+    // wherever the platform asks for one.
+    reset: function (at) {
       blasts.length = 0;
-      fire(VIEW_W * 0.5, GROUND);
+      if (at) fire(at.x, at.y);
+      else fire(VIEW_W * 0.5, GROUND);
     },
 
     advance: function () {
