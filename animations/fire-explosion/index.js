@@ -26,7 +26,7 @@ export default defineAnimation({
   // ---------------------------- the stage ------------------------------
   stage: {
     width: knob("stageWidth"),
-    aspect: 10 / 16,
+    aspect: knob("stageShape"),
     background: C.soot,
     legend: "flash · spikes · rolling fireball · shadowed hollow · " +
       "break-up · torn smoke · grit · ground dust"
@@ -56,6 +56,9 @@ export default defineAnimation({
   knobs: [
     { group: "stage", key: "stageWidth", label: "resolution", default: 160,
       min: 96, max: 320, step: 16, unit: "px wide", applies: "live" },
+    { group: "stage", key: "stageShape", label: "shape", type: "choice", default: 10 / 16,
+      options: [{ value: 10 / 16, label: "16:10" }, { value: 1, label: "1:1 square" }],
+      applies: "live" },
     { group: "stage", key: "stepsPerSec", label: "cadence", default: 12,
       min: 4, max: 30, step: 1, unit: "steps/s", applies: "live" },
     { group: "stage", key: "life", label: "blast length", default: 50,
