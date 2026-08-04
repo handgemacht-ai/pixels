@@ -69,7 +69,7 @@ float differently somewhere; that would show as a stray pixel, not as a differen
 
 Which path starts is decided by the browser. If WebGL 2 is available and the programs build, the
 shaders draw; otherwise the switch is disabled, JavaScript draws, and the note under the stats
-says what went wrong. All seventeen controls work either way.
+says what went wrong. All eighteen controls work either way.
 
 ## Controls
 
@@ -78,10 +78,10 @@ effect was built around. The panel is built out of the declarations in `index.js
 cannot drift away from the number it moves, and `Reset to defaults` puts each one back on its
 tuned value exactly.
 
-- **stage** — resolution, from 96 to 320 pixels wide with the height following at 16:10; cadence
-  in visual steps a second, which the sheet playback follows so the two stay comparable; and how
-  many steps a blast runs for. The fifty-frame arc is stretched onto whatever length is set rather
-  than cut short at the end.
+- **stage** — resolution, from 96 to 320 pixels wide; the shape the height is worked out from,
+  either 16:10 or square; cadence in visual steps a second, which the sheet playback follows so
+  the two stay comparable; and how many steps a blast runs for. The fifty-frame arc is stretched
+  onto whatever length is set rather than cut short at the end.
 - **fireball** — size; how many lobes ride on its shoulder and how big they are; how hard noise
   pushes the silhouette about; how far the colour bands stipple into each other; how fast the mass
   tears open and frays; and a colour shift for the whole flame, measured in bands.
@@ -93,7 +93,7 @@ The palette lock is what holds the picture to the sheet's eight colours. Switche
 bands are mixed rather than snapped and the same shapes come out airbrushed, which is the plainest
 demonstration of what the palette is doing for the look.
 
-Eleven of the knobs apply at once. Size, counts, blast length and shake take hold on the next
+Twelve of the knobs apply at once. Size, counts, blast length and shake take hold on the next
 blast, because a blast keeps the shape and length it was born with until it burns out. Each knob
 declares which of the two it is, and the note under the panel is written from those declarations.
 
