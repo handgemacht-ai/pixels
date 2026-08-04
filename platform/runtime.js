@@ -19,12 +19,18 @@ export async function startAnimation(spec, stageEl) {
   var P = params.values;
 
   function stageWidth() { return Math.round(readBinding(spec.stage.width, P)); }
+  function stageHeight() { return Math.round(stageWidth() * readBinding(spec.stage.aspect, P)); }
   function cadence() { return readBinding(spec.cadence, P); }
   function replayGap() { return readBinding(spec.replay, P); }
 
   var width = stageWidth();
-  var height = Math.round(width * spec.stage.aspect);
+  var height = stageHeight();
   METRICS.view = width + " x " + height;
+
+  // The box the canvas is centred in takes the shape the animation asked for,
+  // so a stage that is not 16:10 is not shown letterboxed inside one that is.
+  function shapeBox() { stageEl.style.aspectRatio = width + " / " + height; }
+  shapeBox();
 
   var surface = await createSurface({
     width: width,
@@ -283,8 +289,9 @@ export async function startAnimation(spec, stageEl) {
   // backdrop and a new texture at the new size.
   function rebuild() {
     width = stageWidth();
-    height = Math.round(width * spec.stage.aspect);
+    height = stageHeight();
     METRICS.view = width + " x " + height;
+    shapeBox();
     if (scene.resize) scene.resize(width, height);
     surface.resize(width, height);
     live.forEach(function (entry) {
@@ -391,7 +398,7 @@ export async function startAnimation(spec, stageEl) {
 
     // a knob has moved
     apply: function () {
-      if (stageWidth() !== width) rebuild();
+      if (stageWidth() !== width || stageHeight() !== height) rebuild();
       document.dispatchEvent(new CustomEvent("pixels:apply", { detail: { animation: spec.id } }));
     },
 
@@ -434,6 +441,7 @@ export async function startAnimation(spec, stageEl) {
       if (!running) return;
       running = false;
       unfit();
+      stageEl.style.aspectRatio = "";
       stageEl.removeEventListener("pointerdown", onPointer);
       live.forEach(function (entry) {
         if (entry.instance.dispose) entry.instance.dispose();
