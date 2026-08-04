@@ -346,21 +346,34 @@ is reporting.
 ## Deploying
 
 The site is served from Cloudflare Pages at <https://pixels.handgemacht.ai>. A deploy is a direct
-upload of the repository root:
+upload of the repository root, and from the project's server it takes two settings in the
+environment to be repeatable:
 
 ```
-npx wrangler pages deploy . --project-name pixels
+NODE_OPTIONS="--dns-result-order=ipv4first" \
+CLOUDFLARE_ACCOUNT_ID=10ffc83d63d85bc2f310685b64e54d3d \
+npx wrangler pages deploy . --project-name pixels --branch main
 ```
 
 Everything under the root goes up, `.gitignore` or not, so empty `tools/out/` before deploying
 rather than publishing a pile of contact sheets.
 
-**A deploy that adds new files needs the edge cache cleared afterwards.** Pages serves the site
-with `cache-control: max-age=14400`, and a request that arrives for a path while the new deploy is
-still landing on the custom domain gets the 404 fallback — the page's own HTML — cached under that
-path for four hours. Every visitor then sees a site whose modules will not load, while the
-`*.pages.dev` deployment URL is perfectly fine, which makes it easy to miss. Purge the paths that
-were added or changed:
+`CLOUDFLARE_API_TOKEN` is loaded by direnv out of `~/.config/direnv/handgemacht.private.envrc`,
+and it is accepted only from an allowed client address: the server's IPv4 one, not its IPv6. Node
+resolves the API host to both families and races them per connection, so an unqualified run fails
+intermittently with error 9109, `Cannot use the access token from location: …`, naming whichever
+IPv6 address that connection went out on. `--dns-result-order=ipv4first` settles the race on the
+family the allowlist knows. `CLOUDFLARE_ACCOUNT_ID` names the account outright and so skips the
+`/accounts` listing wrangler otherwise makes first — the call 9109 surfaces on — and
+`--branch main` files the upload as production rather than as a preview.
+
+**Every deploy needs the edge cache cleared afterwards.** Pages serves the site with
+`cache-control: max-age=14400`, so the custom domain holds each path for four hours whatever has
+landed behind it. A file that changed goes on being served in its old form; a path that is new is
+worse, because a request arriving for it while the deploy is still landing gets the 404 fallback —
+the page's own HTML — cached under that path for the same four hours. Every visitor then sees a
+stale site, or one whose modules will not load, while the `*.pages.dev` deployment URL is
+perfectly fine, which makes it easy to miss. Purge every path the deploy touched:
 
 ```
 curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/purge_cache" \
