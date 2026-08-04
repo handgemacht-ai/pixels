@@ -343,6 +343,18 @@ main {
 .krow output { text-align: right; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 .krow input[type="range"] { width: 100%; min-width: 0; accent-color: var(--flame); }
 .krow input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--flame); justify-self: start; }
+.krow select {
+  grid-column: 2 / -1;
+  min-width: 0;
+  font: inherit;
+  font-family: var(--mono);
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-head);
+  color: var(--ink);
+  cursor: pointer;
+}
 .control-foot {
   display: flex;
   align-items: center;

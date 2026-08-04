@@ -14,8 +14,8 @@ function must(condition, message) {
 }
 
 // A number the animation would rather read off one of its own knobs.
-// Anywhere the platform takes a number — stage width, cadence, replay gap —
-// it also takes knob("someKey").
+// Anywhere the platform takes a number — stage width and shape, cadence,
+// replay gap — it also takes knob("someKey").
 export function knob(key) {
   must(typeof key === "string" && key, "knob() needs the key of a declared knob");
   return { knob: key };
@@ -49,8 +49,8 @@ function normaliseKnob(raw, index) {
   must(raw && raw.key, "knob " + index + " needs a key");
   must(raw.label, 'knob "' + raw.key + '" needs a label');
   var type = raw.type || "slider";
-  must(type === "slider" || type === "toggle",
-    'knob "' + raw.key + '" has an unknown type "' + type + '" (slider or toggle)');
+  must(type === "slider" || type === "toggle" || type === "choice",
+    'knob "' + raw.key + '" has an unknown type "' + type + '" (slider, toggle or choice)');
   must(raw.default !== undefined, 'knob "' + raw.key + '" needs a default');
   var applies = raw.applies || "live";
   must(applies === "live" || applies === "next",
@@ -61,6 +61,22 @@ function normaliseKnob(raw, index) {
     must(raw.min <= raw.default && raw.default <= raw.max,
       'slider "' + raw.key + '" has a default outside its range');
   }
+  // A knob with a handful of settings rather than a range: each is a number
+  // the animation reads exactly as it reads a slider, under a label to pick
+  // it by.
+  var options = [];
+  if (type === "choice") {
+    must(Array.isArray(raw.options) && raw.options.length > 1,
+      'choice "' + raw.key + '" needs two or more options');
+    options = raw.options.map(function (option, at) {
+      must(option && typeof option.value === "number",
+        'choice "' + raw.key + '" option ' + at + " needs a number value");
+      must(option.label, 'choice "' + raw.key + '" option ' + at + " needs a label");
+      return { value: option.value, label: option.label };
+    });
+    must(options.filter(function (o) { return o.value === raw.default; }).length === 1,
+      'choice "' + raw.key + '" has a default that is not one of its options');
+  }
   return {
     key: raw.key,
     label: raw.label,
@@ -69,6 +85,7 @@ function normaliseKnob(raw, index) {
     min: raw.min,
     max: raw.max,
     step: raw.step,
+    options: options,
     unit: raw.unit || "",
     default: raw.default,
     applies: applies
@@ -118,7 +135,7 @@ export function defineAnimation(spec) {
   });
 
   var stage = spec.stage || {};
-  must(typeof stage.aspect === "number" && stage.aspect > 0,
+  must(typeof stage.aspect !== "number" || stage.aspect > 0,
     "stage.aspect must be the height as a fraction of the width");
 
   var backendIds = [];
@@ -228,7 +245,7 @@ export function defineAnimation(spec) {
     knobKeys: keys,
     stage: {
       width: checkBinding(stage.width === undefined ? 160 : stage.width, keys, "stage.width"),
-      aspect: stage.aspect,
+      aspect: checkBinding(stage.aspect, keys, "stage.aspect"),
       background: stage.background === undefined ? 0x000000 : stage.background,
       legend: stage.legend || "",
       // what the line above the stage tells a visitor they can do to it

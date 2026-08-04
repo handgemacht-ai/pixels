@@ -28,6 +28,10 @@ export function initControls(spec, api) {
     return value.toFixed(decimalsOf(knob)) + (knob.unit ? " " + knob.unit : "");
   }
 
+  function optionOf(knob, value) {
+    return knob.options.filter(function (o) { return o.value === value; })[0] || knob.options[0];
+  }
+
   var order = [];
   var grouped = {};
   spec.knobs.forEach(function (knob) {
@@ -56,13 +60,23 @@ export function initControls(spec, api) {
         ? "takes hold on the next " + spec.action.noun
         : "applies at once";
 
-      var input = document.createElement("input");
+      var input = document.createElement(knob.type === "choice" ? "select" : "input");
       input.id = id;
 
-      var value = document.createElement("output");
-      value.setAttribute("for", id);
+      // a choice already says which setting it is on, so it takes the reading's
+      // column as well rather than repeating itself in it
+      var value = knob.type === "choice" ? null : document.createElement("output");
+      if (value) value.setAttribute("for", id);
 
-      if (knob.type === "toggle") {
+      if (knob.type === "choice") {
+        knob.options.forEach(function (option) {
+          var item = document.createElement("option");
+          item.value = String(option.value);
+          item.textContent = option.label;
+          input.appendChild(item);
+        });
+        input.value = String(optionOf(knob, api.params[knob.key]).value);
+      } else if (knob.type === "toggle") {
         input.type = "checkbox";
         input.checked = api.params[knob.key];
       } else {
@@ -75,32 +89,35 @@ export function initControls(spec, api) {
       }
 
       function pushValue() {
-        if (knob.type === "toggle") {
+        if (knob.type === "choice") {
+          api.params[knob.key] = Number(input.value);
+        } else if (knob.type === "toggle") {
           api.params[knob.key] = input.checked;
         } else {
           var scale2 = scaleOf(knob);
           var raw = Number(input.value);
           api.params[knob.key] = scale2 === 1 ? raw : raw / scale2;
         }
-        value.textContent = readout(knob);
+        if (value) value.textContent = readout(knob);
         api.apply();
       }
 
       function pull() {
         var current = api.params[knob.key];
-        if (knob.type === "toggle") input.checked = current;
+        if (knob.type === "choice") input.value = String(optionOf(knob, current).value);
+        else if (knob.type === "toggle") input.checked = current;
         else input.value = String(Math.round(current * scaleOf(knob)));
-        value.textContent = readout(knob);
+        if (value) value.textContent = readout(knob);
       }
 
       input.addEventListener("input", pushValue);
       input.addEventListener("change", pushValue);
-      value.textContent = readout(knob);
+      if (value) value.textContent = readout(knob);
       widgets.push(pull);
 
       row.appendChild(label);
       row.appendChild(input);
-      row.appendChild(value);
+      if (value) row.appendChild(value);
       box.appendChild(row);
     });
 

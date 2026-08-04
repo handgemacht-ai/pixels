@@ -127,17 +127,23 @@ export default defineAnimation({
 });
 ```
 
-Anywhere the platform takes a number — `stage.width`, `cadence`, `replay` — it also takes
-`knob("someKey")`, and then reads that knob every time it needs the number.
+Anywhere the platform takes a number — `stage.width`, `stage.aspect`, `cadence`, `replay` — it
+also takes `knob("someKey")`, and then reads that knob every time it needs the number. A knob on
+`stage.aspect` is how an animation offers more than one stage shape: the buffers, the backdrop,
+the box the canvas sits in and anything filmed off the stage all follow it.
 
 ### Knobs
 
-Each knob declares its own group heading, label, type (`slider` or `toggle`), range, unit, default
-and when it takes effect: `applies: "live"` for at once, `applies: "next"` for on the next run.
-The control panel is built from these declarations, `Reset to defaults` puts each back on its
-declared default exactly, and the note under the panel is written from the `applies` fields. A
-slider with a fractional step is driven as a whole number and divided down, so a reset lands on
-the default and not a hair either side of it.
+Each knob declares its own group heading, label, type (`slider`, `toggle` or `choice`), range,
+unit, default and when it takes effect: `applies: "live"` for at once, `applies: "next"` for on
+the next run. The control panel is built from these declarations, `Reset to defaults` puts each
+back on its declared default exactly, and the note under the panel is written from the `applies`
+fields. A slider with a fractional step is driven as a whole number and divided down, so a reset
+lands on the default and not a hair either side of it.
+
+A `choice` knob has a short list of settings rather than a range: `options: [{ value, label }]`,
+where every value is a number and the default is one of them. It is picked from a list and read
+exactly the way a slider is read.
 
 The values live in one object. The panel writes into it and the animation reads from it; nothing
 is copied, so a knob moved on screen is read on the next step.
