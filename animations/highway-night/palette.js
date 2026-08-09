@@ -106,14 +106,24 @@ export var TAILROAD = 10;  // road standing in a red pool rather than an amber o
 export var SHADOW = 11;    // road with something standing over it
 export var FARROAD = 12;   // the oncoming carriageway, which is the same road further off
 
-// Four levels each, darkest first. The resolve pass reads one of these with a
-// level between 0 and 3 worked out from how much light landed on the pixel, so
-// every material brightens along its own colours: asphalt goes amber, paint
-// goes white, glass stays blue, a wheel stays black until it is almost under
-// the lamp.
+// Steps enough to climb, darkest first. The resolve pass reads one of these
+// with a level worked out from how much light landed on the pixel, so every
+// material brightens along its own colours: asphalt goes amber, paint goes
+// white, glass stays blue, a wheel stays black until it is almost under the
+// lamp.
+//
+// Four steps is the fewest that reads as a ramp and it is what most of these
+// have. Three of them have five, and the three are the ones a halo has to
+// travel down: the air a beam is crossing, the asphalt under a head, and the
+// asphalt behind a tail lamp. On four steps a light ends — one step of skirt
+// and then the dark — and a light in a photograph does not end. It has a tight
+// core and a long faint edge, and the edge is most of what the eye reads as
+// brightness. The fifth step is that edge, and how long a ramp is is read off
+// the ramp rather than declared anywhere, so lengthening one is adding a colour
+// to it and nothing else.
 export var RAMP = [];
-RAMP[AIR] = [CLEAR, C.beamFaint, C.beamFaint, C.beam];
-RAMP[ROAD] = [C.road, C.roadLit, C.roadGlow, C.roadHot];
+RAMP[AIR] = [CLEAR, C.beamDim, C.beamFaint, C.beamGlow, C.beam];
+RAMP[ROAD] = [C.road, C.roadLit, C.roadGlow, C.roadHot, C.roadSheen];
 RAMP[LANE] = [C.lane, C.lane, C.laneLit, C.laneLit];
 RAMP[EDGE] = [C.ink, C.road, C.roadLit, C.roadGlow];
 RAMP[CAR] = [C.carDark, C.carBody, C.carLit, C.hot];
@@ -122,13 +132,13 @@ RAMP[WHEEL] = [C.ink, C.carDark, C.carDark, C.carBody];
 RAMP[POLE] = [C.ink, C.carDark, C.carBody, C.carLit];
 RAMP[RAIL] = [C.ink, C.carDark, C.carBody, C.carBody];
 RAMP[TRAFFIC] = [C.carDark, C.carBody, C.carLit, C.carLit];
-RAMP[TAILROAD] = [C.road, C.tailFaint, C.tailFaint, C.tail];
+RAMP[TAILROAD] = [C.road, C.tailFaint, C.tailGlow, C.tail];
 
 // Shade is not a darker colour laid over the road. It is the same road with a
 // rung taken off the bottom of its ladder and the top of it out of reach: it
-// starts where lit asphalt starts and never gets to the hot step, so a car
-// driving through a pool drags a patch that stays one band behind the road it
-// is on however bright that road becomes. Laying a grey over the asphalt
+// starts where lit asphalt starts and stops two rungs below where the road it
+// lies on stops, so a car driving through a pool drags a patch that stays
+// behind the road it is on however bright that road becomes. Laying a grey over the asphalt
 // instead would have needed a colour of its own and would have gone flat the
 // moment a lamp passed overhead.
 RAMP[SHADOW] = [C.road, C.road, C.roadLit, C.roadGlow];

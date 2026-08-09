@@ -181,6 +181,11 @@ export function brakePool(z, flash, fromRow) {
 // from anywhere. It is measured on the screen rather than on the road, because
 // a halo is a halo from wherever you stand — and it widens with the haze knob,
 // because that is what haze does to a light source.
+//
+// It asks for the skirt, which is the second and much fainter lobe light.js
+// lays around the same point. A lamp on a long exposure has a core the width of
+// its fitting and a wash several times that, and the wash is what makes a lamp
+// look photographed rather than stamped.
 export function headBloom(p, flare) {
   var m = ppm(p.d);
   return {
@@ -188,6 +193,7 @@ export function headBloom(p, flare) {
     y: p.lampY,
     span: clamp((0.22 + 0.16 * P.coneHaze) * m, 1.1 * S, 4 * S),
     gain: 0.34 * (1 + 1.5 * flare),
+    skirt: true,
     red: false
   };
 }

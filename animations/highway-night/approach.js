@@ -128,7 +128,9 @@ export function onStage(step) {
 
 // The glare around each lamp. Small: a headlamp at this distance is a point,
 // and the halo is the only thing that says the point is a light rather than a
-// star that has got below the horizon.
+// star that has got below the horizon. Small, and then carried a long way out
+// by the skirt — a headlamp pointed at the camera is the one source in the
+// picture whose wash is wider than the thing throwing it.
 export function approachBlooms(cars) {
   var out = [];
   var i, k, lamps, l;
@@ -142,6 +144,7 @@ export function approachBlooms(cars) {
         y: l.y,
         span: clamp(0.55 * l.m, 1.1 * S, 3.5 * S),
         gain: 0.30,
+        skirt: true,
         red: false
       });
     }
