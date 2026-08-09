@@ -177,14 +177,25 @@ export function addHaze(mat, c) {
 // front of itself. The mask is a lookup by material id and needs the material
 // buffer to read; a source that names none is handed neither, which is every
 // other source in the folder.
-export function addBloom(b, mat) {
-  if (b.span <= 0.5 || b.gain <= 0) return;
-  var reach = b.span * 2;
+//
+// A source may also ask for a second, much wider and much fainter lobe on top
+// of its own. Measured off a long exposure, a street lamp is not one falloff:
+// it is a tight core the width of the fitting and a skirt several times that,
+// carrying about an eighth of the brightness, and the skirt is most of what
+// makes the picture look photographed. One lobe cannot be both — widened to
+// the skirt it loses the core, narrowed to the core it loses the skirt — so it
+// is drawn as two, and because sources add rather than compete the pair comes
+// out as one profile with a point on it.
+var SKIRT_SPAN = 3;
+var SKIRT_GAIN = 1 / 8;
+
+function lobe(b, span, gain, mat) {
+  var reach = span * 2;
   var x0 = Math.max(0, Math.floor(b.x - reach));
   var y0 = Math.max(0, Math.floor(b.y - reach));
   var x1 = Math.min(VIEW_W - 1, Math.ceil(b.x + reach));
   var y1 = Math.min(VIEW_H - 1, Math.ceil(b.y + reach));
-  var inv = 1 / (b.span * b.span);
+  var inv = 1 / (span * span);
   var skip = (b.skip && mat) ? b.skip : null;
   var x, y, i, row, dx, dy, q, v;
   for (y = y0; y <= y1; y++) {
@@ -196,25 +207,37 @@ export function addBloom(b, mat) {
       if (q > 4) continue;
       i = row + x;
       if (skip && skip[mat[i]]) continue;
-      v = b.gain / (q + 0.25);
+      v = gain / (q + 0.25);
       lux[i] += v;
       if (b.red) ruby[i] += v;
     }
   }
 }
 
-// How much light there is, said in one of four bands.
+export function addBloom(b, mat) {
+  if (b.span <= 0.5 || b.gain <= 0) return;
+  lobe(b, b.span, b.gain, mat);
+  if (b.skirt) lobe(b, b.span * SKIRT_SPAN, b.gain * SKIRT_GAIN, mat);
+}
+
+// How much light there is, said in one of the steps of a ramp — as many steps
+// as that ramp happens to have. The count is handed in rather than assumed at
+// four, because a light that has to fall off over a long skirt wants more of
+// them than a wheel does, and a ramp is the only thing that knows how many it
+// has. Handing in four gives back exactly what this used to give back, which is
+// what makes lengthening one ramp cost nothing to any of the others.
 //
-// Forty fixed colours cannot be blended, so a value falling between two
-// bands is carried by how many pixels of a small tile take the upper one.
-// Which tile is the demonstration knob: the ordered dither dissolves the
-// boundary into texture, the scanline setting throws it into alternating rows
-// the way an interlaced capture would, and hard bands does none of it and
-// shows what the banding underneath actually looks like.
-export function bandLevel(L, x, y, texture) {
-  var v = L * 3;
+// Forty fixed colours cannot be blended, so a value falling between two bands
+// is carried by how many pixels of a small tile take the upper one. Which tile
+// is the demonstration knob: the ordered dither dissolves the boundary into
+// texture, the scanline setting throws it into alternating rows the way an
+// interlaced capture would, and hard bands does none of it and shows what the
+// banding underneath actually looks like.
+export function bandLevel(L, x, y, texture, steps) {
+  var top = steps - 1;
+  var v = L * top;
   if (v <= 0) return 0;
-  if (v >= 3) return 3;
+  if (v >= top) return top;
   var n = Math.floor(v);
   var f = v - n;
   if (texture < 0.5) {
@@ -224,5 +247,5 @@ export function bandLevel(L, x, y, texture) {
   } else if (f > 0.5) {
     n += 1;
   }
-  return n > 3 ? 3 : n;
+  return n > top ? top : n;
 }

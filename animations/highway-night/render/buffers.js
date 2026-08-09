@@ -119,7 +119,7 @@ export function resolve(step, texture, warmth, mottle, redEdge) {
   var cell = SPEED * LOOP / MOTTLE_CELLS;
   var scroll = SPEED * loopStep(step);
   var patched = mottle && cell > 0;
-  var x, y, i, m, L, share, level, colour;
+  var x, y, i, m, L, share, ramp, level, colour;
   for (y = 0; y < VIEW_H; y++) {
     for (x = 0; x < VIEW_W; x++) {
       i = y * VIEW_W + x;
@@ -141,7 +141,8 @@ export function resolve(step, texture, warmth, mottle, redEdge) {
         share = redEdge ? 0.5 + RED_EDGE * (bayer4(x, y) - 0.5) : 0.5;
         if (ruby[i] > share * L) m = TAILROAD;
       }
-      level = bandLevel(L, x, y, texture);
+      ramp = RAMP[m];
+      level = bandLevel(L, x, y, texture, ramp.length);
       // the warmth knob is a band offset, and it is allowed on the road and
       // the paint only: shifting the whole picture would just be a brightness
       // slider, whereas shifting the ground alone is the difference between
@@ -149,9 +150,9 @@ export function resolve(step, texture, warmth, mottle, redEdge) {
       if (m === ROAD || m === LANE || m === TAILROAD || m === SHADOW || m === FARROAD) {
         level += warmth;
         if (level < 0) level = 0;
-        else if (level > 3) level = 3;
+        else if (level >= ramp.length) level = ramp.length - 1;
       }
-      colour = RAMP[m][level];
+      colour = ramp[level];
       if (colour >= 0) put(x, y, colour);
     }
   }
