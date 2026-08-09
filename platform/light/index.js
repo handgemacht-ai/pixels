@@ -26,7 +26,7 @@
 // the same.
 
 import { bandLevel, bayer4, resolveInto } from "./bands.js";
-import { addAmbient, addSun, addPoint, addBloom, addHaze } from "./sources.js";
+import { addAmbient, addSun, addPoint, addBloom, addHaze, createScratch } from "./sources.js";
 
 // passed on rather than re-declared, because a scene drawing its own emitters
 // over the resolve has to dither them against the same tile the resolve used
@@ -44,9 +44,9 @@ export function createLighting(options) {
   }
 
   // The field is one object, and it is the same object the sources are handed
-  // and the scene holds on to. Its buffers are replaced on a resize rather than
-  // the object being rebuilt, so a scene that kept the reference keeps it —
-  // but a scene that cached `field.mat` in a local must read it again.
+  // and the scene holds on to. It is sized once and never resized: a stage that
+  // changes size changes the model with it, so the scene has to build its
+  // lighting again anyway and there is nothing here worth keeping across that.
   var field = {
     width: 0,
     height: 0,
@@ -77,6 +77,9 @@ export function createLighting(options) {
     // The face table, if the scene keeps face ids: one [x, y, z] per id, or a
     // hole where an id means nothing in particular.
     faces: o.faces || null,
+
+    // the sources' own working room, held here so two fields never share it
+    scratch: createScratch(),
 
     mat: null, hgt: null, dep: null, face: null,
     nx: null, ny: null, nz: null, lux: null
@@ -118,7 +121,17 @@ export function createLighting(options) {
     var relief = p.relief === undefined ? 1 : p.relief;
     var slopeMax = p.slopeMax === undefined ? 6 : p.slopeMax;
     var blend = p.blend === undefined ? 1 : p.blend;
-    var an = p.aniso === undefined ? field.aniso : p.aniso;
+
+    // What a step down the screen means, and it is a signed thing rather than
+    // the field's own `aniso`, which is a squash and only ever positive. Say it
+    // positive for a view where further down the screen is further away, so a
+    // surface falling away downwards tilts away from the eye; say it negative
+    // for a raised view, where further down the screen is *nearer* and that
+    // same surface is tilting towards the eye. 1 is the flat-on reading, and
+    // the two axes weighed the same — never inherited from anywhere, because a
+    // scene that omitted it and got a metric back would get the sign of its
+    // relief silently reversed.
+    var tilt = p.tilt === undefined ? 1 : p.tilt;
 
     var w = field.width;
     var h = field.height;
@@ -157,11 +170,11 @@ export function createLighting(options) {
         gx = clamp(gx, -slopeMax, slopeMax);
         gy = clamp(gy, -slopeMax, slopeMax);
 
-        // the vertical is multiplied by the squash, because a step taken down
-        // the screen covers less ground than one taken across it and the same
-        // rise over it is therefore a steeper slope
+        // only the vertical is weighed, because only the vertical is ambiguous:
+        // across the screen a step is a step, while down it a step is whatever
+        // the view has decided to carry there
         vx = -gx * relief;
-        vy = -gy * relief * an;
+        vy = -gy * relief * tilt;
         vz = 1;
 
         // A height field cannot tell the top of a block from its side: both are
@@ -232,11 +245,6 @@ export function createLighting(options) {
   // written, which is the number a scene puts in its stats strip.
   field.resolve = function (out, opts) {
     return resolveInto(field, out, opts);
-  };
-
-  field.resize = function (width, height) {
-    allocate(Math.round(width), Math.round(height));
-    return field;
   };
 
   return field;

@@ -137,6 +137,12 @@ export function defineAnimation(spec) {
   var stage = spec.stage || {};
   must(typeof stage.aspect !== "number" || stage.aspect > 0,
     "stage.aspect must be the height as a fraction of the width");
+  // Said outright rather than coerced, because everything else on the stage
+  // takes knob(key) and a knob handed to this one would read as a plain true —
+  // an animation asking for listeners it meant to leave to a knob, and no
+  // complaint anywhere to say so.
+  must(stage.track === undefined || stage.track === true || stage.track === false,
+    "stage.track must be true or false");
 
   var backendIds = [];
   var backends = spec.backends.map(function (backend, i) {
