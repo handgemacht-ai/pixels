@@ -19,7 +19,17 @@ import { paintCity } from "./skyline.js";
 
 var STAR_SEED = 3;
 
-export function makeBackdrop() {
+// What of the static half a stage wants. All three default to on, so the
+// assembled highway asks for nothing and gets everything; a stage whose
+// subject is the road turns the city and its glow off, because a skyline
+// behind a thing being examined is decoration and decoration is what a solo
+// is for taking away.
+export function makeBackdrop(options) {
+  var wanted = options || {};
+  var wantCity = wanted.city !== false;
+  var wantStars = wanted.stars !== false;
+  var wantGlow = wanted.glow !== false;
+
   var canvas = document.createElement("canvas");
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
@@ -46,7 +56,7 @@ export function makeBackdrop() {
   // Drawn before the glow, so the glow puts out the low ones. That is the
   // right way round: a city does not hide stars evenly, it hides the ones
   // nearest its own light.
-  var stars = Math.round(50 * S);
+  var stars = wantStars ? Math.round(50 * S) : 0;
   for (i = 0; i < stars; i++) {
     x = Math.floor(hash01(i, 1, STAR_SEED) * VIEW_W);
     y = Math.floor(hash01(i, 2, STAR_SEED) * HORIZON * 0.86);
@@ -60,7 +70,7 @@ export function makeBackdrop() {
   // many pixels of each little tile take the glow.
   var cx = VIEW_W * 0.34;
   var half = VIEW_W * 0.46;
-  var tall = HORIZON * 0.62;
+  var tall = wantGlow ? HORIZON * 0.62 : 0;
   for (x = 0; x < VIEW_W; x++) {
     d = (x - cx) / half;
     if (d <= -1 || d >= 1) continue;
@@ -81,7 +91,7 @@ export function makeBackdrop() {
   fill(C.road, 0, HORIZON, VIEW_W, 1);
 
   // ---------------------------- the city -------------------------------
-  paintCity(fill);
+  if (wantCity) paintCity(fill);
 
   return canvas;
 }

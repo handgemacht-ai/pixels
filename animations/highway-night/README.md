@@ -7,12 +7,43 @@ pixel by pixel, then blown up with nearest-neighbour scaling.
 
 Nothing is stored between one step and the next except a single integer — the step number — and
 three transients a strike sets. Where the lamps are, where the lane dashes are, which sign is
-flickering, how far the body has dropped on its springs: all of it is derived from that one number
-again from scratch on every step. Nothing accumulates, so nothing can drift.
+flickering, which oncoming car is in shot: all of it is derived from that one number again from
+scratch on every step. Nothing accumulates, so nothing can drift.
 
 The loop is four seconds long and closes exactly. It has to: the animation is filmed straight off
 the page into a GIF, and a seam that shifts by one pixel is the difference between a loop and a
 stutter.
+
+## Five stages
+
+This folder registers five entries rather than one. The assembled highway is the animation; the
+other four take one part of it out, stand it on a stage of its own and hand it the knobs that part
+answers to. Everything else is turned off, which is the whole value of them: a decision about a
+four-pixel car or a one-pixel shadow is impossible to see inside a picture with a lit city in it.
+
+- **Night highway, lit by its own lamps** — the assembly, and the only one of the five that is
+  filmed into the repository.
+- **The car, and nothing else on the road** — the shell, its two lamps and the shade it takes off
+  the road, under a light with no fitting so it can be looked at lit rather than in silhouette.
+- **One lamp, and the pool it lays** — the line of masts, with the cone, the spill, the haze and
+  the bloom each on a control of its own: three switches, and a dial for the haze, because haze is
+  a quantity rather than a thing that is or is not being cast. Turn all four down and what is left
+  is the road on its own, which is why there is no separate stage for that.
+- **The far carriageway** — the two rows of small cars, their tail lamps, the streaks they drag,
+  and a switch for the street lamps, because a lit carriageway and an unlit one are two different
+  problems.
+- **The skyline, and which signs are on** — twenty-four housings, four tube colours and the
+  flicker, with nothing scrolling underneath.
+
+They share every module in the folder and they share this file. What each declares for itself is a
+stage, a set of knobs and a drawing order, in one file apiece. A knob one of the shared modules
+reads and the stage has not declared is an error at the door rather than a picture that quietly
+goes black: `useParams()` is handed the list of keys the stage is going to need and checks it
+before anything is drawn.
+
+None of the four is filmed into the repository. The GIF button on their pages works and films
+whatever is on screen; there is simply no committed copy, because what the site shows of this
+animation is the assembly.
 
 ## Why a side elevation
 
@@ -29,22 +60,27 @@ a high band and moves in a high band's colours.
 ## What is where
 
 ```
-index.js       the registration: stage, knobs, palette, plate, stats, drawing path
-state.js       the stage size, the ground ladder, and the constants latched per loop
-world.js       the scroll clock and the lattice — where the loop is guaranteed
-palette.js     twenty-nine colours, eleven material ramps
-maths.js       hash, value noise, ordered dither, and the suspension's gain curve
-road.js        the bands, the rail, the median, the paint and the grit
-pole.js        the mast, the arm and the cobra head
-light.js       the light field: cones, haze, bloom, and the banding that reads it
-lightcone.js   where each cone points, how wide it opens and how far it carries
-car.js         the hero car's silhouette and the springs it rides on
-traffic.js     the other carriageway — two rows, on their own lattice
-neon.js        which signs are lit, which are flickering, and how a lit one reads
-skyline.js     the towers, their windows and the sign housings
-backdrop.js    sky, stars, city glow, both skylines — drawn once per stage size
-render/cpu.js  the drawing path: material pass, light pass, resolve, emitters
-assets/        reference material, read and never drawn
+index.js          the assembly's registration: stage, knobs, palette, plate, stats, path
+solo-car.js       the car alone: registration and drawing path in one file
+solo-lamp.js      the lamps alone, four sources on four switches
+solo-traffic.js   the far carriageway alone
+solo-city.js      the skyline alone, and nothing that scrolls
+state.js          the stage size, the ground ladder, and the constants latched per loop
+world.js          the scroll clock and the lattice — where the loop is guaranteed
+palette.js        twenty-nine colours, thirteen material ramps
+maths.js          hash, value noise and the ordered dither
+road.js           the bands, the rail, the median, the paint and the grit
+pole.js           the mast, the arm and the cobra head
+light.js          the light field: cones, haze, bloom, and the banding that reads it
+lightcone.js      where each cone points, how wide it opens and how far it carries
+car.js            the hero car's silhouette and the shade it takes off the road
+traffic.js        the other carriageway — two rows, on their own lattice
+neon.js           which signs are lit, which are flickering, and how a lit one reads
+skyline.js        the towers, their windows and the sign housings
+backdrop.js       sky, stars, city glow, both skylines — drawn once per stage size
+render/buffers.js the buffers, the resolve and the backend all five stages share
+render/cpu.js     the assembly's path: material pass, light pass, resolve, emitters
+assets/           reference material, read and never drawn
 ```
 
 ## The ground ladder
@@ -124,8 +160,9 @@ surfacing, sixteen blotches to a loop, so the grid closes at the seam like every
   is drawn behind each of them.
 - **neon** — how many of the sign housings are lit, how far up their ramp they burn, and how much
   they flicker.
-- **car** — how far the headlight beams reach and how wide they open, how far the body travels on
-  its springs, and how rough the road under those springs is.
+- **car** — how far the headlight beams reach and how wide they open. The car itself has nothing
+  else to argue about: it rides level, because a car at motorway speed on a laid carriageway does,
+  and it is the one module in the folder that reads no knob at all.
 - **scene** — the gap between automatic strikes.
 
 Four knobs take hold at the top of the next loop rather than at once: lamp spacing, steps per lamp,

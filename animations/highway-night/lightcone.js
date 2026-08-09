@@ -31,14 +31,17 @@ var DEG = Math.PI / 180;
 // sticker and four makes a wash. Everything else here is relative to that one
 // number.
 //
-// The tail gain is deliberately small. A tail lamp only has to win the red
-// test — more than half the light at a pixel — and it only has to win it where
-// no street lamp is arguing, so it is set to make a pool about ten pixels
-// across with a couple of saturated pixels at its middle. Anything stronger
-// and every car would drag a red carpet through the amber ones.
+// The tail gain is deliberately small, and smaller than it first was. A tail
+// lamp only has to win the red test — more than half the light at a pixel —
+// and it only has to win it where no street lamp is arguing. Set to make a
+// pool ten pixels across it made every small car on the far carriageway the
+// brightest thing in its band, and the far carriageway stopped reading as
+// distance and started reading as a row of red lamps. Half that, thrown into a
+// quarter of the angle, puts the red where the car is and leaves the rest of
+// the band dark.
 var LAMP_GAIN = 0.75;
 var HEAD_GAIN = 0.55;
-var TAIL_GAIN = 0.18;
+var TAIL_GAIN = 0.10;
 
 // How far the headlamps throw, as a fraction of the stage width. Thirty pixels
 // of a hundred and ninety-two is roughly a car and a half ahead at the first
@@ -143,8 +146,8 @@ export function poleBloom(p, flare) {
 // car would put it in an oblique view — and casting it rather than pretending
 // it is not there is what gives the road ahead a bright core inside a wider
 // spill instead of one flat wedge.
-export function headCones(pose, lamp, flash) {
-  var tilt = BEAM_TILT - pose.pitch * 0.06;
+export function headCones(lamp, flash) {
+  var tilt = BEAM_TILT;
   var spread = clamp(P.beamSpread, 4, 60) * DEG * (1 - 0.45 * flash);
   var span = Math.max(4 * S, P.beamReach * (1 + flash) * BEAM_REACH * S);
   var gain = HEAD_GAIN * (1 + 1.4 * flash);
@@ -164,16 +167,21 @@ export function headBloom(lamp, flash) {
 // A tail lamp: a small red bloom and a short red wedge dragged out behind it.
 // Both feed the red field as well as the total one, so the asphalt under them
 // resolves along the ruby ramp and a red pool never comes out amber.
+// A tail lamp throws backwards, not sideways. Opened fifty degrees it washed
+// the whole band it stood in; at twenty-six it is a streak the length of the
+// car behind the car, cut short so it cannot reach the next one, and the bloom
+// at its root carries the brightness the wedge gave up.
 export function tailCone(x, y, back, gain) {
   return {
     x: x, y: y, ax: back, ay: 0,
-    cosHalf: Math.cos(50 * DEG),
-    span: Math.max(2 * S, 9 * S),
+    cosHalf: Math.cos(26 * DEG),
+    span: Math.max(2 * S, 5 * S),
     gain: TAIL_GAIN * gain,
+    cut: 2,
     red: true
   };
 }
 
 export function tailBloom(x, y, gain) {
-  return { x: x, y: y, span: 3 * S, gain: 0.22 * gain, red: true };
+  return { x: x, y: y, span: 2 * S, gain: 0.30 * gain, red: true };
 }

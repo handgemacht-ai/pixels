@@ -23,6 +23,21 @@ var STREET_PAGE = "https://commons.wikimedia.org/wiki/" +
 var VEGAS_PAGE = "https://commons.wikimedia.org/wiki/" +
   "File:WV_banner_Downtown_Las_Vegas_Neon_on_Fremont_Street.jpg";
 
+// Every knob the modules this stage draws with are going to read. The four
+// solo stages share those modules and declare far fewer of these, so the list
+// is checked against what the control panel actually built rather than assumed
+// — a stage that drew a cone without offering a cone knob would otherwise
+// arrive at NaN and go quietly black.
+var NEEDS = [
+  "stageWidth", "stageShape", "stepsPerSec",
+  "poleSteps", "poleSpacing", "poleHeight",
+  "coneReach", "coneSpread", "coneHaze", "coneTexture", "lampWarmth",
+  "density", "trail",
+  "signs", "neonIntensity", "flicker",
+  "beamReach", "beamSpread",
+  "replay"
+];
+
 export default defineAnimation({
   id: "highway-night",
   title: "Night highway, lit by its own lamps",
@@ -113,8 +128,8 @@ export default defineAnimation({
 
     { group: "traffic", key: "density", label: "oncoming cars", default: 4,
       min: 0, max: 8, step: 1, applies: "next" },
-    { group: "traffic", key: "trail", label: "trail length", default: 10,
-      min: 0, max: 24, step: 1, unit: "px", applies: "live" },
+    { group: "traffic", key: "trail", label: "trail length", default: 5,
+      min: 0, max: 12, step: 1, unit: "px", applies: "live" },
 
     { group: "neon", key: "signs", label: "signs lit", default: 18,
       min: 0, max: 24, step: 1, applies: "next" },
@@ -127,10 +142,6 @@ export default defineAnimation({
       min: 0.5, max: 2.5, step: 0.05, unit: "x", applies: "live" },
     { group: "car", key: "beamSpread", label: "beam spread", default: 18,
       min: 8, max: 40, step: 1, unit: "deg", applies: "live" },
-    { group: "car", key: "bob", label: "body travel", default: 1.2,
-      min: 0, max: 3, step: 0.1, unit: "px", applies: "live" },
-    { group: "car", key: "roughness", label: "road roughness", default: 1,
-      min: 0, max: 2, step: 0.05, unit: "x", applies: "live" },
 
     { group: "scene", key: "replay", label: "auto-replay", default: 6,
       min: 1, max: 12, step: 0.1, unit: "s", applies: "live" }
@@ -194,9 +205,9 @@ export default defineAnimation({
       meta: "knob values, band heights, and the constants that only change on a loop" },
     { path: "world.js", sub: "the scroll clock and the lattice",
       meta: "one integer of state · where the loop is guaranteed to close" },
-    { path: "palette.js", sub: "twenty-nine colours and eleven ramps",
+    { path: "palette.js", sub: "twenty-nine colours and thirteen ramps",
       meta: "the GIF's colour table, and what every material brightens along" },
-    { path: "maths.js", sub: "hash, noise, dither, spring",
+    { path: "maths.js", sub: "hash, value noise, ordered dither",
       meta: "nothing here calls Math.random" },
     { path: "road.js", sub: "bands, rail, median, paint and grit",
       meta: "four lattices, all of them halvings of the lamp spacing" },
@@ -206,8 +217,8 @@ export default defineAnimation({
       meta: "sources are added, never compared · ground in world units, air in screen ones" },
     { path: "lightcone.js", sub: "where a cone points and how far it carries",
       meta: "a pool and a headlamp beam are the same object with different numbers" },
-    { path: "car.js", sub: "the hero car and its springs",
-      meta: "a closed-form quarter-car, because a stepped spring would drift the loop open" },
+    { path: "car.js", sub: "the hero car, and the shade it takes off the road",
+      meta: "level, because a car at this speed on a laid carriageway is · reads no knob" },
     { path: "traffic.js", sub: "the other carriageway",
       meta: "two rows on their own lattice, at whole quarters of the scroll speed" },
     { path: "neon.js", sub: "which signs are lit, and which are flickering",
@@ -216,6 +227,8 @@ export default defineAnimation({
       meta: "the static half of the picture, and where neon.js finds its signs" },
     { path: "backdrop.js", sub: "sky, stars, glow and city",
       meta: "drawn once per stage size, behind every frame" },
+    { path: "render/buffers.js", sub: "the buffers all five stages share",
+      meta: "material buffer, light field, resolve — and the backend built on them" },
     { path: "render/cpu.js", sub: "the drawing path",
       meta: "material pass, light pass, resolve — in that order, and it matters" },
 
@@ -284,7 +297,7 @@ export default defineAnimation({
 
   // ---------------------------- the animation --------------------------
   create: function (ctx) {
-    useParams(ctx.params);
+    useParams(ctx.params, NEEDS);
     setStage(ctx.width, ctx.height);
     var world = createWorld();
     world.resize = setStage;

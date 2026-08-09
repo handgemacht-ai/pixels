@@ -6,15 +6,16 @@
 // Between one step and the next the animation remembers a single integer — the
 // step number — and three transients that a strike sets and that decay back to
 // exactly zero. Everything else on the stage is a function of that integer:
-// where the lamps are, where the dashes are, which sign is flickering, how far
-// the body has dropped on its springs. Nothing accumulates, so nothing can
-// drift, and the frame at step 48 is the frame at step 0 to the pixel.
+// where the lamps are, where the dashes are, which sign is flickering, which
+// oncoming car is in shot. Nothing accumulates, so nothing can drift, and the
+// frame at step 48 is the frame at step 0 to the pixel.
 
 import {
   VIEW_W, S, HORIZON, Y_NEAR, SPACING, SPEED, LOOP, loopStep, latchWorld, kmh
 } from "./state.js";
 import { clamp, frac } from "./maths.js";
-import { onStage } from "./traffic.js";
+import { onStage, latchTraffic } from "./traffic.js";
+import { latchSigns } from "./neon.js";
 import { poleHit } from "./pole.js";
 
 // The lamp lattice is anchored 46 pixels in rather than at zero, so that at the
@@ -81,8 +82,10 @@ export var STRUCK_LAMP = 2;
 export var STRUCK_LINE = 3;
 
 // One step of a transient, and the last step of it lands on zero rather than
-// near it.
-function fade(v, steps) {
+// near it. Exported because every stage here has transients and none of them
+// may be allowed to keep a residue: the solos borrow this rather than each
+// carrying three lines of their own that could drift apart from it.
+export function fade(v, steps) {
   v -= 1 / steps;
   return v > EPS ? v : 0;
 }
@@ -114,6 +117,15 @@ export function createWorld() {
     count.loop = Math.round(frac(state.step / LOOP) * 100);
   }
 
+  // The assembled highway draws everything, so it latches everything. A solo
+  // calls only the latches for the parts it has on stage, which is the whole
+  // reason the three of them live in three files rather than in one.
+  function latchAll() {
+    latchWorld();
+    latchTraffic();
+    latchSigns();
+  }
+
   function reset() {
     state.step = 0;
     state.flash = 0;
@@ -121,7 +133,7 @@ export function createWorld() {
     state.wake = 0;
     state.struck = -1;
     state.kind = STRUCK_NOTHING;
-    latchWorld();
+    latchAll();
     recount();
   }
 
@@ -197,7 +209,7 @@ export function createWorld() {
     // number when it is drawn, so there is nothing here to move.
     advance: function () {
       state.step += 1;
-      if (state.step % LOOP === 0) latchWorld();
+      if (state.step % LOOP === 0) latchAll();
 
       state.flash = fade(state.flash, FLASH_STEPS);
       state.surge = fade(state.surge, SURGE_STEPS);

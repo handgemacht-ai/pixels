@@ -1,11 +1,15 @@
 "use strict";
 
-// What the platform hands this animation — the live values of its knobs and
-// the size of the stage — and the two things everything else here is measured
-// against: the ladder of ground bands, and the handful of world constants that
-// are only allowed to change on a loop boundary.
-
-import { clamp } from "./maths.js";
+// What the platform hands whichever stage is running — the live values of its
+// knobs and the size of the stage — and the two things everything else here is
+// measured against: the ladder of ground bands, and the handful of world
+// constants that are only allowed to change on a loop boundary.
+//
+// Five stages share this file: the assembled highway and the four solos that
+// take one part of it out and put it on its own. They share the modules but
+// not the knobs, so the guard in useParams() is load-bearing — a stage that
+// draws a cone without offering a cone-spread knob would otherwise read
+// undefined, arrive at NaN, and go silently black rather than saying so.
 
 // The knob values. The same object the control panel writes into, so a knob
 // moved on screen is read on the next step without anything being copied.
@@ -65,8 +69,6 @@ export var DESIGN_SPACING = 48;  // pixels between lamps, at a 192-wide stage
 export var SPACING = 48;         // the same, in the pixels actually being drawn
 export var SPEED = 4;            // pixels of scroll per step
 export var LOOP = 48;            // steps in one loop: four lamps, one stage width
-export var CARS = 4;             // oncoming cars per lattice
-export var SIGNS = 18;           // how many of the sign housings are lit
 
 // Metres per pixel at the design scale. Lamps on an urban expressway stand
 // about 33 metres apart and the plan puts them 48 pixels apart, which fixes
@@ -88,7 +90,23 @@ export function loopStep(step) {
   return ((step % LOOP) + LOOP) % LOOP;
 }
 
-export function useParams(params) { P = params; }
+// The knobs, and the list of keys the modules this stage draws with are going
+// to read. A key that is not on the stage's own declaration arrives here as
+// undefined, and undefined times a length is NaN, which draws nothing and
+// explains nothing. Naming the miss at the door is worth the one loop it costs
+// per stage build.
+export function useParams(params, needs) {
+  P = params;
+  var wanted = needs || [];
+  var i, value;
+  for (i = 0; i < wanted.length; i++) {
+    value = P[wanted[i]];
+    if (typeof value !== "number" && typeof value !== "boolean") {
+      throw new Error('highway: this stage reads knob "' + wanted[i] +
+        '" and does not declare it');
+    }
+  }
+}
 
 export function setStage(width, height) {
   VIEW_W = width;
@@ -114,7 +132,10 @@ export function setStage(width, height) {
   CAR_X = Math.round(82 * S);
 }
 
-// Called at every reset and at every loop boundary, and nowhere else.
+// Called at every reset and at every loop boundary, and nowhere else. What
+// else has to be latched alongside it depends on what the stage is drawing, so
+// the traffic and the signs latch themselves in their own files and every
+// stage calls only the ones it uses.
 export function latchWorld() {
   STEPS_PER_POLE = Math.max(1, Math.round(P.poleSteps));
   DESIGN_SPACING = Math.max(8, Math.round(P.poleSpacing));
@@ -125,8 +146,17 @@ export function latchWorld() {
   // so the lattice comes back onto itself exactly, and every hash taken on a
   // cell counted modulo its cells-per-loop comes back with it.
   LOOP = STEPS_PER_POLE * 4;
-  CARS = Math.round(clamp(P.density, 0, 8));
-  SIGNS = Math.round(clamp(P.signs, 0, 24));
+}
+
+// The same latch for a stage that does not move. Standing still is not a speed
+// of zero on a scrolling road — it is a different world: nothing derives its
+// place from the scroll, so the loop is whatever length the stage says it is,
+// and the spacing is left at its design value only because the lattice helpers
+// divide by it and must not divide by nothing.
+export function latchStill(loop) {
+  SPEED = 0;
+  SPACING = 48 * S;
+  LOOP = Math.max(1, Math.round(loop));
 }
 
 // The speed the picture is running at, in km/h, worked out from the scale

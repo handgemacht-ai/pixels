@@ -5,7 +5,8 @@ animation is a self-contained folder that registers what it is and what it needs
 builds the page around it — stage, control panel, stats strip, reference playback and file browser
 — out of that registration and nothing else.
 
-There are three animations:
+There are three animations and seven entries in the switcher — the night highway registers four
+solo stages beside itself, each standing one part of the picture on its own:
 
 - [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
   over, once in JavaScript and once in fragment shaders.
@@ -13,6 +14,8 @@ There are three animations:
   internal skeleton, held frame for frame against Muybridge's plate 706 of 1887.
 - [`animations/highway-night`](animations/highway-night) — a night expressway seen square from the
   side, lit only by its own lamps, carrying one integer of state and a loop that closes exactly.
+  It registers five stages: the assembled highway, and four that stand the car, the lamps, the far
+  carriageway and the skyline on their own.
 
 ![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
 
@@ -88,6 +91,10 @@ animations/<id>/
 
 Add the folder, then import it in `animations/index.js` and put it in the `ANIMATIONS` array. It
 appears in the switcher straight away; `node tools/poster.mjs --thumbs` gives it its picture there.
+
+A folder may register more than one entry — several `defineAnimation()` calls, several imports and
+several places in the array — and each is a separate id with its own stage, knobs, thumbnail and
+address, because nothing the platform builds is keyed on which folder an entry came out of.
 
 ### The registration
 

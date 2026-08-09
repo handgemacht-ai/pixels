@@ -16,11 +16,21 @@
 // running it back through the material ramps would put a lamp's amber over a
 // pink sign, which is exactly the mistake the material pass exists to prevent.
 
-import { VIEW_W, S, LOOP, SIGNS, P } from "./state.js";
+import { VIEW_W, S, LOOP, P } from "./state.js";
 import { C, NEON } from "./palette.js";
-import { hash01, bayer4, frac } from "./maths.js";
+import { clamp, hash01, bayer4, frac } from "./maths.js";
 import { housings } from "./skyline.js";
 import { STRUCK_SIGN } from "./world.js";
+
+// How many of the twenty-four housings have anything in them tonight. It
+// re-cuts which signs are in the lit set, so it is latched on a loop boundary
+// rather than read live — a sign winking on halfway through a lap would be a
+// sign the loop does not close over.
+export var SIGNS = 18;
+
+export function latchSigns() {
+  SIGNS = Math.round(clamp(P.signs, 0, 24));
+}
 
 var FLICKER_SEED = 91;
 var ORDER_SEED = 113;
@@ -33,7 +43,7 @@ var PHASES = 8;
 var cachedWidth = -1;
 var cached = null;
 var order = null;
-var biggest = null;
+var ranked = null;
 
 // The housings are expensive enough to be worth keeping — they walk the whole
 // near skyline to find the roof each sign stands on — and they only depend on
@@ -57,32 +67,59 @@ function signs() {
     order[i] = rank;
   }
 
-  // The three largest housings, which are the only ones that get a flare.
-  // A flare on every sign is a sky full of stars; on three it is a skyline
-  // with three big signs on it.
-  biggest = [];
-  for (i = 0; i < cached.length; i++) biggest.push(i);
-  biggest.sort(function (a, b) {
+  // Every housing, largest first. How many of them get a cross flare is the
+  // caller's business — a flare on every sign is a sky full of stars, and on
+  // three it is a skyline with three big signs on it — but the ranking is the
+  // same one whoever is asking, so it is worked out here once.
+  ranked = [];
+  for (i = 0; i < cached.length; i++) ranked.push(i);
+  ranked.sort(function (a, b) {
     return (cached[b].w * cached[b].h) - (cached[a].w * cached[a].h);
   });
-  biggest = biggest.slice(0, 3);
   return cached;
+}
+
+// The cells of the n largest housings. What a strike with nowhere in
+// particular to land wakes, on a stage whose whole subject is the signs.
+export function biggestSigns(count) {
+  signs();
+  var out = [];
+  var i;
+  for (i = 0; i < ranked.length && i < count; i++) out.push(cached[ranked[i]].cell);
+  return out;
+}
+
+// A strike names one sign, or — where a stage strikes several at once — a
+// handful of them. Both arrive as `struck`, and neither is a special case
+// worth a second field on the state.
+function isStruck(struck, cell) {
+  if (struck === null || struck === undefined) return false;
+  if (typeof struck === "number") return struck === cell;
+  return struck.indexOf(cell) >= 0;
 }
 
 // The list of signs that have light in them this step. Everything in it is a
 // function of the step number: which cells are in the lit set at all, and then
 // which of those the flicker has dropped for this eighth of the loop.
-export function litSigns(state) {
+//
+// `hueLock` at zero leaves every sign the hue its cell hashed to; one to four
+// forces the whole skyline onto a single tube colour, which is the only way to
+// see what one of the four is actually doing against a night sky. `flares` is
+// how many of the largest housings get the cross — three on the assembled
+// highway, and anything from none to six where the signs are the subject.
+export function litSigns(state, hueLock, flares) {
   var all = signs();
   var phase = Math.floor(frac(state.step / LOOP) * PHASES);
-  var struck = state.kind === STRUCK_SIGN ? state.struck : -1;
+  var struck = state.kind === STRUCK_SIGN ? state.struck : null;
+  var lock = Math.round(hueLock || 0);
+  var picks = Math.round(flares || 0);
   var out = [];
   var i, sign, lit, on, wake;
   for (i = 0; i < all.length; i++) {
     sign = all[i];
     lit = order[i] < SIGNS;
     on = lit && hash01(sign.cell, phase, FLICKER_SEED) >= P.flicker * 0.35;
-    if (sign.cell === struck && state.wake > 0) {
+    if (isStruck(struck, sign.cell) && state.wake > 0) {
       // struck: a tube coming up cold stutters far harder than one that has
       // been running, and settles as the transient runs out
       wake = Math.floor(state.wake * 24);
@@ -91,8 +128,8 @@ export function litSigns(state) {
     if (!on) continue;
     out.push({
       sign: sign,
-      hue: NEON[sign.hue % NEON.length],
-      flare: biggest.indexOf(i) >= 0
+      hue: lock > 0 ? NEON[(lock - 1) % NEON.length] : NEON[sign.hue % NEON.length],
+      flare: ranked.indexOf(i) < picks
     });
   }
   return out;
@@ -130,20 +167,32 @@ function archetype(put, s, colour) {
 }
 
 // One ring of the sign's own colour around it, laid down on the ordered dither
-// so that half the ring lands and half does not. There is no dimmer pink in
-// the palette to make a halo out of, and there must not be: a blend would put
-// a thirtieth colour on the stage and break the table the GIF is written from.
-// Half a ring of the full colour is what the palette can actually say, and at
-// this size it reads as glow rather than as a dotted line.
-function halo(put, s, colour) {
+// so that only part of the ring lands. There is no dimmer pink in the palette
+// to make a halo out of, and there must not be: a blend would put a thirtieth
+// colour on the stage and break the table the GIF is written from. Part of a
+// ring of the full colour is what the palette can actually say, and at this
+// size it reads as glow rather than as a dotted line.
+//
+// `ring` is how far out from the tube this one sits. The first lies against
+// the sign and takes half the dither; the second lies outside that one and
+// takes a quarter, so a pair of them thins outwards and reads as a falloff
+// rather than as a two-pixel border.
+var HALO_DITHER = [0.5, 0.25];
+
+function halo(put, s, colour, ring) {
   var u = Math.max(1, Math.round(S));
-  var x0 = s.x - u, y0 = s.y - u;
-  var x1 = s.x + s.w + u - 1, y1 = s.y + s.h + u - 1;
+  var out = ring * u;
+  var keep = HALO_DITHER[ring - 1];
+  var x0 = s.x - out, y0 = s.y - out;
+  var x1 = s.x + s.w + out - 1, y1 = s.y + s.h + out - 1;
+  // whatever this ring encloses is either the sign itself or a ring that has
+  // already been laid, so only the outermost band of the box belongs to it
+  var ix0 = x0 + u, iy0 = y0 + u, ix1 = x1 - u, iy1 = y1 - u;
   var x, y;
   for (x = x0; x <= x1; x++) {
     for (y = y0; y <= y1; y++) {
-      if (x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h) continue;
-      if (bayer4(x, y) < 0.5) put(x, y, colour);
+      if (x >= ix0 && x <= ix1 && y >= iy0 && y <= iy1) continue;
+      if (bayer4(x, y) < keep) put(x, y, colour);
     }
   }
 }
@@ -163,15 +212,28 @@ function flare(put, s) {
   }
 }
 
+// The signs, at whatever strength the intensity knob is asking for. Its three
+// bands are three amounts of glow around the same tube — the tube on its own,
+// the tube with a ring around it, and a second, thinner ring outside that,
+// which is as far as a fixed palette can carry a falloff outwards.
+//
+// The cross flares are not on that ladder. How many signs are big enough to be
+// worth one is a question about the skyline, not about how hard the tubes are
+// burning, so the count decides it on its own and the ladder decides the glow;
+// hanging the flares off the top band would make one of the two knobs say
+// nothing wherever the other one was not at its limit.
 export function paintNeon(put, list) {
   var bands = Math.round(P.neonIntensity);
   if (bands <= 0) return;
   var i, item;
   for (i = 0; i < list.length; i++) {
     item = list[i];
-    if (bands >= 2) halo(put, item.sign, item.hue);
+    // outwards in, so the ring that reads as glow is under the one that reads
+    // as the tube
+    if (bands >= 3) halo(put, item.sign, item.hue, 2);
+    if (bands >= 2) halo(put, item.sign, item.hue, 1);
     archetype(put, item.sign, item.hue);
-    if (bands >= 3 && item.flare) flare(put, item.sign);
+    if (item.flare) flare(put, item.sign);
   }
 }
 

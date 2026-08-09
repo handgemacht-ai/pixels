@@ -17,10 +17,28 @@
 // onto itself and the seam would show as a car appearing out of nothing.
 
 import {
-  VIEW_W, S, Y_FAR, Y_MEDIAN, SPACING, SPEED, LOOP, loopStep, CARS
+  P, VIEW_W, S, Y_FAR, Y_MEDIAN, SPACING, SPEED, LOOP, loopStep
 } from "./state.js";
-import { TRAFFIC } from "./palette.js";
-import { hash01 } from "./maths.js";
+import { TRAFFIC, WHEEL } from "./palette.js";
+import { clamp, hash01 } from "./maths.js";
+
+// How thick the traffic is, how long the shortest car is, and how many of the
+// two rows are carrying anything. All three re-cut the row, so all three are
+// latched on a loop boundary rather than read live.
+//
+// Only the first comes off a knob every stage has. The other two are the
+// numbers the scene was measured at, and a stage that wants to argue with them
+// hands its own over — which is what the traffic solo does, and what the
+// assembled highway deliberately does not.
+export var CARS = 4;
+export var LENGTH = 7;
+export var ROW_COUNT = 2;
+
+export function latchTraffic(length, rows) {
+  CARS = Math.round(clamp(P.density, 0, 8));
+  LENGTH = typeof length === "number" ? Math.round(clamp(length, 5, 16)) : 7;
+  ROW_COUNT = typeof rows === "number" ? Math.round(clamp(rows, 1, 2)) : 2;
+}
 
 // Three quarters and five quarters over the scroll speed. Over a loop the
 // scroll covers four spacings, so these two cover seven and nine — both whole,
@@ -50,16 +68,17 @@ export function oncoming(step) {
   var count = Math.ceil(VIEW_W / spacing) + 2;
   var anchor = ANCHOR * S;
   // how likely a slot is to be carrying a car, set so that the number on the
-  // knob is the number in shot: two rows, one slot per spacing, and as many
-  // spacings across the stage as the spacing knob leaves room for
-  var threshold = spacing * CARS / (2 * VIEW_W);
+  // knob is the number in shot: however many rows are running, one slot per
+  // spacing, and as many spacings across the stage as the spacing knob leaves
+  // room for
+  var threshold = spacing * CARS / (ROW_COUNT * VIEW_W);
   // A list of its own on every call. Holding one array between calls would
   // save an allocation of a dozen objects a step and cost the guarantee that
   // two callers a step apart cannot empty each other's cars — and the counting
   // in world.js and the drawing in render/cpu.js are exactly two such callers.
   var list = [];
   var r, row, speed, cells, drift, base, j, cell, x, w, h;
-  for (r = 0; r < ROWS.length; r++) {
+  for (r = 0; r < ROW_COUNT; r++) {
     row = ROWS[r];
     speed = rowSpeed(row);
     cells = rowCells(row);
@@ -68,7 +87,7 @@ export function oncoming(step) {
     for (j = 0; j < count; j++) {
       cell = ((base + j) % cells + cells) % cells;
       if (hash01(cell, r + 1, row.seed) >= threshold) continue;
-      w = Math.max(5, Math.round((7 + hash01(cell, 7, row.seed) * 5) * S));
+      w = Math.max(5, Math.round((LENGTH + hash01(cell, 7, row.seed) * 5) * S));
       h = Math.max(3, Math.round((3 + hash01(cell, 9, row.seed) * 2) * S));
       x = drift + j * spacing - spacing;
       list.push({
@@ -96,15 +115,21 @@ export function onStage(step) {
   return n;
 }
 
+// Three steps and a line under them. Two rectangles read as a brick with a lid
+// on it, because a brick and a lid is what they are; a car seen from the side
+// steps three times — bonnet, then screen, then roof — and the eye is looking
+// for those steps rather than for detail it could not resolve at four pixels
+// tall anyway. The line under the sill is the contact shadow, and it is what
+// puts the car on the road instead of a few pixels above it.
 export function paintTraffic(slab, cars) {
+  var u = Math.max(1, Math.round(S));
   var i, c;
   for (i = 0; i < cars.length; i++) {
     c = cars[i];
-    // the body, and a roof set two pixels in at each end. Two rectangles is
-    // the whole car, and the second one is what stops it reading as a brick.
-    slab(TRAFFIC, c.x, c.y, c.w, c.h);
-    slab(TRAFFIC, c.x + Math.max(1, Math.round(2 * S)), c.y - Math.max(1, Math.round(S)),
-      c.w - Math.max(2, Math.round(4 * S)), Math.max(1, Math.round(S)));
+    slab(TRAFFIC, c.x, c.y + u, c.w, c.h - u);
+    slab(TRAFFIC, c.x + u, c.y, c.w - u, u);
+    slab(TRAFFIC, c.x + 2 * u, c.y - u, c.w - 4 * u, u);
+    slab(WHEEL, c.x, c.y + c.h, c.w, u);
   }
 }
 

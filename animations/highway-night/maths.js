@@ -71,18 +71,3 @@ var BAYER = [
 export function bayer4(x, y) {
   return (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
 }
-
-// How much a body on springs magnifies a bump of a given frequency. A road car
-// sits on its suspension at about 1.2 Hz with dampers set near a third of
-// critical, which is why it floats over long undulations, wallows on anything
-// close to 1.2 Hz, and barely notices a sharp joint: the gain peaks just below
-// the natural frequency and falls away above it. The suspension is this curve
-// read at three fixed frequencies rather than a spring integrated step by
-// step, because a closed form gives the same answer at step 0 and step 48 and
-// so cannot drift the loop open.
-export function springGain(hz) {
-  var r = hz / 1.2;
-  var a = 1 - r * r;
-  var b = 2 * 0.35 * r;
-  return 1 / Math.sqrt(a * a + b * b);
-}
