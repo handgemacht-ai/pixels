@@ -41,7 +41,7 @@ var NEEDS = [
 export default defineAnimation({
   id: "highway-side",
   title: "The same road, seen from the side",
-  tagline: "192 x 120 pixels · 29 colours · one integer of state · four seconds round",
+  tagline: "192 x 120 pixels · 40 colours · one integer of state · four seconds round",
   base: new URL(".", import.meta.url).href,
   action: { verb: "Strike", noun: "strike" },
 
@@ -150,13 +150,13 @@ export default defineAnimation({
 
   // ---------------------------- the palette ----------------------------
   // No lock knob. In the other animations unlocking the palette mixes between
-  // bands to show what the discipline is holding back; here the twenty-nine
-  // colours are the GIF's colour table, and a blend would put a thirtieth on
-  // the stage. The cone texture knob makes the same point instead, by changing
-  // how a value between two bands is carried.
+  // bands to show what the discipline is holding back; here the forty colours
+  // are the GIF's colour table, and a blend would put a forty-first on the
+  // stage. The cone texture knob makes the same point instead, by changing how
+  // a value between two bands is carried.
   palette: {
     colours: C,
-    title: "twenty-nine colours: warm below, cool above, neon only on the signs"
+    title: "forty colours: warm below, cool above, neon only on the signs"
   },
 
   // -------------------- the plate beside the stage ---------------------
@@ -206,7 +206,7 @@ export default defineAnimation({
       meta: "knob values, band heights, and the constants that only change on a loop" },
     { path: "world.js", sub: "the scroll clock and the lattice",
       meta: "one integer of state · where the loop is guaranteed to close" },
-    { path: "palette.js", sub: "twenty-nine colours and thirteen ramps",
+    { path: "palette.js", sub: "forty colours and thirteen ramps",
       meta: "the GIF's colour table, and what every material brightens along" },
     { path: "maths.js", sub: "hash, value noise, ordered dither",
       meta: "nothing here calls Math.random" },

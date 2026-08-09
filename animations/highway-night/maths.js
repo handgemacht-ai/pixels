@@ -54,12 +54,12 @@ export function vnoiseLoop(x, y, cell, cells, seed) {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 
-// The 4 x 4 ordered dither, as a threshold between 0 and 1. Twenty-nine fixed
-// colours cannot be blended — mixing two of them would put a thirtieth on the
-// stage and break the colour table the GIF is written from — so a value that
-// falls between two bands is carried by how many pixels of a small tile take
-// the upper band rather than by a colour in between. The 4 x 4 field is the
-// smallest one whose pattern still reads as texture rather than as a
+// The 4 x 4 ordered dither, as a threshold between 0 and 1. Forty fixed
+// colours cannot be blended — mixing two of them would put a forty-first on
+// the stage and break the colour table the GIF is written from — so a value
+// that falls between two bands is carried by how many pixels of a small tile
+// take the upper band rather than by a colour in between. The 4 x 4 field is
+// the smallest one whose pattern still reads as texture rather than as a
 // checkerboard at this resolution.
 var BAYER = [
   0, 8, 2, 10,
