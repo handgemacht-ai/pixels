@@ -67,6 +67,10 @@ export function initSheet(spec, api) {
   }
 
   function note() {
+    // A plate of one frame is a still. There is nothing in it to step through,
+    // so counting it out would say "frame 1 / 1" for ever and then hold it
+    // against a stride it is not being played over.
+    if (FRAMES < 2) return "one plate, held still";
     var steps = cycleSteps();
     var text = "frame " + (frame + 1) + " / " + FRAMES;
     if (!phase) return text + " · " + FPS + " fps";
