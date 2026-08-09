@@ -5,7 +5,7 @@ animation is a self-contained folder that registers what it is and what it needs
 builds the page around it — stage, control panel, stats strip, reference playback and file browser
 — out of that registration and nothing else.
 
-There are three animations and seven entries in the switcher — the night highway registers four
+There are four animations and eight entries in the switcher — the night highway registers four
 solo stages beside itself, each standing one part of the picture on its own:
 
 - [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
@@ -16,12 +16,16 @@ solo stages beside itself, each standing one part of the picture on its own:
   side, lit only by its own lamps, carrying one integer of state and a loop that closes exactly.
   It registers five stages: the assembled highway, and four that stand the car, the lamps, the far
   carriageway and the skyline on their own.
+- [`animations/diorama`](animations/diorama) — a ruined tower seen three quarters from above, built
+  out of one function and lit by one lamp going round it, which is the only thing that moves.
 
 ![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
 
 ![Two strides of the dog, drawn at four times its size](assets/dog-walk.gif)
 
 ![One lap of the night highway: forty-eight steps, drawn at three times its size](assets/highway-night.gif)
+
+![One lap of the lamp around the ruined tower: forty-eight steps, drawn at four times its size](assets/diorama.gif)
 
 Every frame above came out of the animation itself — a seeded run, filmed step by step. Nothing in
 any of them was drawn by hand.
@@ -42,6 +46,7 @@ platform/surface.js     the PixiJS pixel surface offered to drawing paths
 platform/metrics.js     the numbers a page can actually measure
 platform/gif.js         a GIF89a writer, used by the page and by the tools
 platform/export.js      films the animation as it stands and hands over the file
+platform/light/         material and height in, lit pixels out — for animations that want it
 platform/ui/            switcher, controls, stats strip, file browser, sheet player, furniture
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
@@ -161,7 +166,8 @@ is copied, so a knob moved on screen is read on the next step.
 
 ### Lifecycle
 
-`create(ctx)` is called once, with `ctx = { params, width, height }`, and returns the animation:
+`create(ctx)` is called once, with `ctx = { params, width, height, pointer }`, and returns the
+animation:
 
 ```js
 {
@@ -177,6 +183,9 @@ is copied, so a knob moved on screen is read on the next step.
 
 The platform calls `advance()` at the declared cadence, `detonate()` when the replay gap runs out
 or the stage is clicked, and `reset()` whenever the picture has to start over.
+
+`pointer` is one live object for the whole run, exactly as `params` is: `{ x, y, inside }`, in
+stage pixels. It only carries a reading when the animation asks for one — see `stage.track` below.
 
 ### Drawing paths
 
@@ -210,6 +219,11 @@ says why under the stats, and carries on with the others. If none start, the pag
 
 ### Optional extras
 
+- **`stage.track`** — `true` puts pointer listeners on the stage, and from then on `ctx.pointer`
+  says where the mouse is and whether it is over the stage at all. `inside` is what an animation
+  must actually test: the coordinates only mean anything while a real pointer is there. The
+  platform holds `inside` false for the whole of a poster or a film, so an animation that follows
+  the mouse still exports the run its knobs describe rather than the run somebody was pointing at.
 - **`palette`** — `{ colours, lockKnob, title }`. Draws the swatch strip under the reference
   playback and names the colours the animation holds itself to.
 - **`reference`** — a sheet of frames the platform plays back beside the stage at the same cadence,

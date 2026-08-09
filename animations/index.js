@@ -17,10 +17,12 @@ import highwayCar from "./highway-night/solo-car.js";
 import highwayLamp from "./highway-night/solo-lamp.js";
 import highwayTraffic from "./highway-night/solo-traffic.js";
 import highwayCity from "./highway-night/solo-city.js";
+import diorama from "./diorama/index.js";
 
 export var ANIMATIONS = [
   fireExplosion, dogWalk, highwayNight,
-  highwayCar, highwayLamp, highwayTraffic, highwayCity
+  highwayCar, highwayLamp, highwayTraffic, highwayCity,
+  diorama
 ];
 
 export function pickAnimation(id) {
