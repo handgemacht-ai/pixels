@@ -247,6 +247,10 @@ export function defineAnimation(spec) {
       width: checkBinding(stage.width === undefined ? 160 : stage.width, keys, "stage.width"),
       aspect: checkBinding(stage.aspect, keys, "stage.aspect"),
       background: stage.background === undefined ? 0x000000 : stage.background,
+      // an animation that follows the mouse rather than only being clicked at.
+      // Asking for it is what puts the listeners on the stage, so an animation
+      // that does not ask pays nothing for them.
+      track: !!stage.track,
       legend: stage.legend || "",
       // what the line above the stage tells a visitor they can do to it
       hint: stage.hint || "click the canvas"
