@@ -499,6 +499,8 @@ export async function startAnimation(spec, stageEl) {
   function onLeave() { pointer.inside = false; }
 
   function onPointer(event) {
+    // a strike landing while a poster or a film is being made would be in it
+    if (posing) return;
     // a tap aims before it strikes, so a click on the far side of the stage
     // lands where it was pointed rather than where the mouse was last
     onMove(event);

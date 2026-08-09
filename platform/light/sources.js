@@ -64,18 +64,27 @@ var SHADOW_CAP = 64;
 // because scenes build their sources fresh every step and a module that
 // scribbled defaults back into them would be handing the scene its own
 // leftovers on the next frame.
+//
+// The scratch belongs to the field rather than to this module. Two fields lit
+// on the same page — a stage and a thumbnail of it, say — would otherwise be
+// settling their sources into the same object and sweeping each other's boxes.
 
-var S = {
-  kind: "point",
-  x: 0, y: 0, h: 0, d: 0,
-  ax: 0, ay: 0, az: -1,
-  cosHalf: -1, wedge: false,
-  span: 1, cut: CUT, gain: 1, wrap: 0.25,
-  shade: true, shadow: false, shadowBias: 0.6, shadowSteps: 24
-};
+export function createScratch() {
+  return {
+    s: {
+      kind: "point",
+      x: 0, y: 0, h: 0, d: 0,
+      ax: 0, ay: 0, az: -1,
+      cosHalf: -1, wedge: false,
+      span: 1, cut: CUT, gain: 1, wrap: 0.25,
+      shade: true, shadow: false, shadowBias: 0.6, shadowSteps: 24
+    },
+    box: { x0: 0, y0: 0, x1: 0, y1: 0 }
+  };
+}
 
 function settle(field, raw) {
-  var s = S;
+  var s = field.scratch.s;
   s.kind = raw.kind || "point";
   s.x = raw.x || 0;
   s.y = raw.y || 0;
@@ -126,9 +135,8 @@ function settle(field, raw) {
 // sweep would walk as far above the lamp as below it, and each one would cost
 // twice the pixels it needs.
 
-var box = { x0: 0, y0: 0, x1: 0, y1: 0 };
-
 export function wedgeBox(field, s, aniso) {
+  var box = field.scratch.box;
   var reach = s.span * s.cut;
   var half = Math.acos(clamp(s.cosHalf, -1, 1));
 
@@ -308,7 +316,7 @@ export function addSun(field, raw) {
 export function addPoint(field, raw) {
   var s = settle(field, raw);
   if (s.span <= 0.5 || s.gain <= 0) return;
-  wedgeBox(field, s, field.aniso);
+  var box = wedgeBox(field, s, field.aniso);
 
   var w = field.width;
   var mat = field.mat;
@@ -403,7 +411,7 @@ export function addHaze(field, raw) {
   var s = settle(field, raw);
   if (s.span <= 0.5 || s.gain <= 0) return;
   // in screen pixels: a shaft of lit air has no ground plane to lie on
-  wedgeBox(field, s, 1);
+  var box = wedgeBox(field, s, 1);
 
   var w = field.width;
   var mat = field.mat;

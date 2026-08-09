@@ -130,7 +130,7 @@ function rebuild() {
     reliefStamp = -1;
   }
   if (P.relief !== reliefStamp) {
-    L.normals({ relief: P.relief, aniso: DEPTH_TILT, blend: 1 });
+    L.normals({ relief: P.relief, tilt: DEPTH_TILT, blend: 1 });
     reliefStamp = P.relief;
   }
 }
