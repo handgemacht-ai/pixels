@@ -1,9 +1,10 @@
 # Highway night
 
-A car driving through a lit corridor at night, seen from the side: sodium lamps on mast arms,
-their cones crossing the carriageway, a skyline and its neon behind, oncoming traffic drawing red
-across the far side. The stage is 192 × 120 pixels and every frame is worked out at that size,
-pixel by pixel, then blown up with nearest-neighbour scaling.
+A car driving through a lit corridor at night, drawn twice from the same measurements: once
+square from the side, with sodium lamps on mast arms and their cones crossing the carriageway,
+and once down the length of the road, with the lamp line running away to a vanishing point. The
+stage is 192 × 120 pixels either way, every frame is worked out at that size pixel by pixel, and
+what is blown up afterwards is the finished buffer.
 
 Nothing is stored between one step and the next except a single integer — the step number — and
 three transients a strike sets. Where the lamps are, where the lane dashes are, which sign is
@@ -14,15 +15,18 @@ The loop is four seconds long and closes exactly. It has to: the animation is fi
 the page into a GIF, and a seam that shifts by one pixel is the difference between a loop and a
 stutter.
 
-## Five stages
+## Two assemblies and four solos
 
-This folder registers five entries rather than one. The assembled highway is the animation; the
-other four take one part of it out, stand it on a stage of its own and hand it the knobs that part
-answers to. Everything else is turned off, which is the whole value of them: a decision about a
-four-pixel car or a one-pixel shadow is impossible to see inside a picture with a lit city in it.
+This folder registers six entries rather than one. Two of them are the whole road, drawn from two
+places to stand: the shot down its length and the elevation across it. The other four take one
+part of the elevation out, stand it on a stage of its own and hand it the knobs that part answers
+to. Everything else is turned off, which is the whole value of them: a decision about a four-pixel
+car or a one-pixel shadow is impossible to see inside a picture with a lit city in it.
 
-- **Night highway, lit by its own lamps** — the assembly, and the only one of the five that is
-  filmed into the repository.
+- **Night highway, lit by its own lamps** — the shot down the road: one horizon, one vanishing
+  point, and depth on every row.
+- **The same road, seen from the side** — the elevation: no vanishing point at all, and depth
+  carried by which horizontal band a thing is drawn in.
 - **The car, and nothing else on the road** — the shell, its two lamps and the shade it takes off
   the road, under a light with no fitting so it can be looked at lit rather than in silhouette.
 - **One lamp, and the pool it lays** — the line of masts, with the cone, the spill, the haze and
@@ -35,53 +39,92 @@ four-pixel car or a one-pixel shadow is impossible to see inside a picture with 
 - **The skyline, and which signs are on** — twenty-four housings, four tube colours and the
   flicker, with nothing scrolling underneath.
 
-They share every module in the folder and they share this file. What each declares for itself is a
-stage, a set of knobs and a drawing order, in one file apiece. A knob one of the shared modules
-reads and the stage has not declared is an error at the door rather than a picture that quietly
-goes black: `useParams()` is handed the list of keys the stage is going to need and checks it
-before anything is drawn.
+They share every module in the folder that both pictures can use, and they share this file. What
+each declares for itself is a stage, a set of knobs and a drawing order, in one file apiece. A
+knob one of the shared modules reads and the stage has not declared is an error at the door rather
+than a picture that quietly goes black: `useParams()` is handed the list of keys the stage is
+going to need and checks it before anything is drawn.
 
-None of the four is filmed into the repository. The GIF button on their pages works and films
-whatever is on screen; there is simply no committed copy, because what the site shows of this
-animation is the assembly.
+The two assemblies are filmed into the repository; the four solos are not. The GIF button on a
+solo's page works and films whatever is on screen, but there is no committed copy, because what
+the site shows of this animation is the road.
 
 ## Why a side elevation
 
 The obvious shot is down the road, with the lamps receding to a vanishing point. At 192 pixels
-across that shot leaves the car about six pixels tall and turns every cone of light into a smear
-near the horizon — and the cones are the whole reason for the picture. Seen square from the side
-the cone is a wedge the width of a hand, the car is a shape rather than a smudge, and depth is
-carried by which horizontal band a thing is drawn in.
+across that shot leaves a car ahead about six pixels tall if it is far enough away to be worth
+calling far, and turns every cone of light into a smear near the horizon — and the cones are the
+whole reason for that picture. Seen square from the side the cone is a wedge the width of a hand,
+the car is a shape rather than a smudge, and depth is carried by which horizontal band a thing is
+drawn in.
 
-That decision is load-bearing. There is no per-pixel depth anywhere in this animation and no
+That decision is load-bearing in the elevation. There is no per-pixel depth anywhere in it and no
 camera: the ground is a fixed ladder of six bands, and a thing is far away because it is drawn in
 a high band and moves in a high band's colours.
+
+## Why also a shot down the road
+
+The elevation answers the question a driver never asks. What a long exposure of a motorway
+actually records — and what the plate this animation is measured against shows — is the corridor
+seen down its own length: a lamp line converging, headlight trails drawn towards the eye, and a
+road that opens out from a point.
+
+Three things only exist in that shot. Foreshortening is the first: a lamp's pool is a circle of
+tarmac about twelve metres across whether it is beside the camera or two hundred metres away, and
+what changes is the shape it projects to — twenty rows deep near the eye and two rows deep at the
+far end. The second is the point where a lattice stops resolving: the gaps between one lamp and
+the next are 7.75, 2.58, 1.29 and 0.77 rows, so four spacings come out as four masts and the rest
+close into a smear. The third is the streak: everything moving relative to the camera draws a line
+towards the vanishing point, and everything moving with it draws nothing.
+
+None of the three can be shown in an elevation, and none of them needs an extra colour, an extra
+buffer or a second kind of frame. The two pictures are the same road at the same scale — 33.3
+metres between lamps, 2.775 metres of travel per step, 120 km/h — drawn by the same four sweeps
+over the same two buffers.
 
 ## What is where
 
 ```
-index.js          the assembly's registration: stage, knobs, palette, plate, stats, path
+index.js          the shot down the road: stage, knobs, palette, plate, stats, world
+side.js           the elevation: the same, for the picture across the road
 solo-car.js       the car alone: registration and drawing path in one file
 solo-lamp.js      the lamps alone, four sources on four switches
 solo-traffic.js   the far carriageway alone
 solo-city.js      the skyline alone, and nothing that scrolls
+
 state.js          the stage size, the ground ladder, and the constants latched per loop
-world.js          the scroll clock and the lattice — where the loop is guaranteed
+world.js          the scroll clock, the lattice and the transients
 palette.js        twenty-nine colours, thirteen material ramps
 maths.js          hash, value noise and the ordered dither
-road.js           the bands, the rail, the median, the paint and the grit
-pole.js           the mast, the arm and the cobra head
 light.js          the light field: cones, haze, bloom, and the banding that reads it
-lightcone.js      where each cone points, how wide it opens and how far it carries
-car.js            the hero car's silhouette and the shade it takes off the road
-traffic.js        the other carriageway — two rows, on their own lattice
 neon.js           which signs are lit, which are flickering, and how a lit one reads
 skyline.js        the towers, their windows and the sign housings
 backdrop.js       sky, stars, city glow, both skylines — drawn once per stage size
-render/buffers.js the buffers, the resolve and the backend all five stages share
-render/cpu.js     the assembly's path: material pass, light pass, resolve, emitters
+render/buffers.js the buffers, the resolve and the backend all six stages share
+
+road.js           the elevation's bands, rail, median, paint and grit
+pole.js           the elevation's mast, arm and cobra head
+lightcone.js      where each cone points, how wide it opens and how far it carries
+car.js            the elevation's hero car and the shade it takes off the road
+traffic.js        the elevation's far carriageway — two rows, on their own lattice
+render/side.js    the elevation's path: material pass, light pass, resolve, emitters
+
+camera.js         the projection: one horizon, one vanishing column, row to metres
+carriageway.js    the road down its length, a cross-section projected row by row
+masts.js          the lamp line, on a lattice measured in metres ahead
+chase.js          the car ahead, fixed in z and therefore fixed on the screen
+approach.js       oncoming traffic as headlamps and exposure, with no bodywork
+groundlight.js    pools measured on the road plane, and the light behind the camera
+render/deep.js    the shot down the road: the same four sweeps, sorted in depth
+
 assets/           reference material, read and never drawn
 ```
+
+The middle block is shared by every stage in the folder. The two blocks under it are not: an
+elevation has bands and no camera, a shot down the road has a camera and no bands, and neither
+set of numbers means anything in the other picture. Trying to make one road module serve both
+would have produced a module with a mode switch through the middle of it and two pictures that
+were each a little wrong.
 
 ## The ground ladder
 
@@ -92,6 +135,58 @@ rail band is four pixels and cannot spare one.
 
 The ladder is pinned to the stage width, not the height, so the square stage setting adds sky and
 never touches the road.
+
+## The camera
+
+The shot down the road has no ladder and nothing for one to hold. It has a horizon, a vanishing
+column, and one number that turns a screen row into a distance.
+
+The road is 0.3125 of the stage width deep — 60 rows at 192 across — which puts the horizon
+halfway down a 16:10 stage and a little over two thirds of the way down a square one. Pinning it
+to the width rather than the height is the same decision the ladder makes, and for the same
+reason: the square setting adds sky and never touches the carriageway. The vanishing column is
+0.619 of the width, column 119, which is where it sits in the plate.
+
+The camera stands 4.5 metres above the carriageway and 12 metres behind the car it is following.
+Both are knobs. The focal length is folded into a single constant — 516 metre-rows at the design
+scale — so a row `d` below the horizon is `516 / d` metres away, and a metre at that row is
+`d / 4.5` pixels across. Everything else in the picture is those two lines:
+
+```
+row    d    z (m)   px per metre
+ 61    1    516.0     0.22
+ 65    5    103.2     1.11
+ 70   10     51.6     2.22
+ 80   20     25.8     4.44
+ 90   30     17.2     6.67
+103   43     12.0     9.56
+119   59      8.7    13.11
+```
+
+The corridor is a cross-section in metres, measured off the plate and held at every depth: far
+shoulder at −15.1, oncoming carriageway from −12.6 to −5.4 with its divider at −9.0, median from
+−5.4 to −1.8 carrying a 0.9-metre barrier, the camera's own carriageway from −1.8 to +5.4 with its
+divider at +1.8, and the right shoulder out to +7.9. The masts stand at −14.6 and +7.4 and reach
+their heads in to −12.2 and +5.0. Each row of the road is that cross-section projected at the row's
+own depth, which is why the lane lines converge without anything being told to converge, and why
+the barrier gets shorter as it goes.
+
+Lamps every 33.3 metres land at these rows below the horizon:
+
+```
+lamp   z (m)   rows below horizon   gap from the one before
+  1     33.3         15.50            —
+  2     66.6          7.75          7.75
+  3     99.9          5.17          2.58
+  4    133.2          3.87          1.29
+  5    166.5          3.10          0.77
+  6    199.8          2.58          0.52
+```
+
+Four spacings resolve as four masts. The fifth is three quarters of a row from the fourth and the
+sixth is half a row from the fifth, which is not a lamp line any more but aliasing, so the picture
+stops drawing masts past two hundred and fifty metres and lets a band of light along the horizon
+carry the rest of the line — which is what the plate shows there too.
 
 ## The loop
 
@@ -107,6 +202,50 @@ At the defaults: 48 pixels between lamps, 12 steps between them, 12 steps a seco
 pixels a step, 48 steps to the loop, four seconds — and, at the scale the lamp spacing fixes
 (33.3 metres to 48 pixels), 120 km/h. The speed on the stats strip is worked out from those
 numbers rather than declared, so moving either knob moves it.
+
+## The loop, in z
+
+The shot down the road runs the same clock with the same knobs, and the lattice it hangs things on
+is the same lattice with its units changed: metres ahead of the camera where the elevation has
+pixels across the stage. The lamp spacing knob is still read in design pixels and is still
+converted at 33.3 metres to 48 of them, because a spacing that differed between the two pictures
+would make one of them a lie about the other.
+
+At the defaults the camera covers 2.775 metres a step, a lamp spacing every twelve steps, four
+spacings to a loop. Every hash is taken on a cell index counted modulo the cells in a loop, exactly
+as across the stage, so the mast arriving at the horizon carries what the mast that has just swept
+past the camera was carrying.
+
+The road markings hang on halvings of the same lattice: the dashes on a quarter of the spacing,
+which is sixteen cells to a loop, and the two rows of oncoming traffic at three quarters and five
+quarters over the camera's own speed, which is seven and nine cells. Whole numbers in every case —
+a row that covered a fraction of its own spacing in a loop would not come back onto itself, and the
+seam would show as a car appearing out of nothing.
+
+## What streaks and what does not
+
+A long exposure draws a line for everything that moved while the shutter was open, and the length
+of the line is how fast the thing was going relative to the camera. That sentence is the whole of
+the picture's motion rule, and both halves of it are drawn.
+
+Oncoming traffic streaks. Each car is a pair of headlamps and nothing else — at a hundred metres
+there is no bodywork to draw and a photograph of one has none — and behind each lamp the same lamp
+is drawn again at where it was one step ago, two steps ago, and so on for as many steps as the
+exposure knob asks for. It is not a streak drawn along the screen: it is the same piece of
+geometry evaluated at earlier distances, so it converges on the vanishing point, thins as it goes
+and bends the way the road bends, none of which it had to be told.
+
+The car ahead does not streak, and cannot. It is being followed at a fixed distance, so relative to
+the camera it is not moving, so the shutter has nothing to smear. For the same reason it never
+changes size: a fixed distance projects to a fixed rectangle, and the shell is the same nineteen
+pixels by eighteen on every step of the loop. There is no surge and no wobble in this picture —
+striking the road flashes the brake lamps and pushes the red further down the tarmac, and the body
+does not move at all. A car ahead that surged would get smaller, and at this scale a tenth of a
+metre is a pixel appearing on one side of it and not the other.
+
+The road between the two streaks and does so quietly: the lane dashes, the barrier and the paint
+are all fixed to the world rather than to the camera, so they run past at the camera's own speed
+and the pools of the lamps run with them.
 
 ## Material first, light second
 
@@ -144,8 +283,26 @@ picture is about — disappears.
 Between the four steps of a ramp there is nothing to fade through, so the in-between values are
 carried by the ordered dither, a scanline dither, or thrown away, whichever the texture knob says.
 Over a wide flat band of asphalt a dither with nothing to work against resolves into a chequerboard
-and reads as static, so the road's light is multiplied by a wrapped value noise first — patched
-surfacing, sixteen blotches to a loop, so the grid closes at the seam like everything else.
+and reads as static, so in the elevation the road's light is multiplied by a wrapped value noise
+first — patched surfacing, sixteen blotches to a loop, so the grid closes at the seam like
+everything else.
+
+Down the road the sources are the same idea measured somewhere else. A lamp lays a circle on the
+road plane: nine metres up, twelve metres of reach, inverse square with a cosine term, all of it in
+metres, and only then projected. Nothing works out the foreshortening — a near pool coming out
+twenty rows deep and a far one two is what happens when a circle of tarmac is drawn where the
+camera says it is. For the same reason a pool is allowed to land on the road and on nothing else: a
+mast and the car ahead stand out of the plane and are not inside the circle however many of their
+pixels it covers, so they stay silhouettes against it, which at night is what they are.
+
+Two flat sources hold the picture up underneath all that. A city on the horizon puts a little light
+on everything, which is the difference between a road that fades into the dark and one that ends at
+a hard edge; and a band along the horizon carries the part of the lamp line the geometry has
+stopped drawing. One source points the other way: the camera is in a car, that car has its lamps
+on, and while its beams add nothing to a road they strike at a grazing angle, they fall square on
+the one vertical surface aimed straight back at them. That is why there is anything to see on the
+back of the car ahead at all, and why moving the chase knob changes how well lit it is as well as
+how big.
 
 ## The knobs
 
@@ -164,6 +321,20 @@ surfacing, sixteen blotches to a loop, so the grid closes at the seam like every
   else to argue about: it rides level, because a car at motorway speed on a laid carriageway does,
   and it is the one module in the folder that reads no knob at all.
 - **scene** — the gap between automatic strikes.
+
+The shot down the road takes the same groups and changes three things in them. It gains a
+**camera** group — height above the carriageway, from 3 to 8 metres, and chase distance, from 8 to
+20 — which between them decide where the horizon falls, how fast the road opens out below it, and
+how big the one object in shot with a size the eye already knows is drawn. Mast height is in
+metres there rather than pixels, because a mast in that picture is a different number of pixels at
+every distance. And the trail knob becomes an exposure in steps, because what is drawn is not a
+length but a number of earlier positions.
+
+Two knobs the elevation offers are absent. Cone spread has nothing to open: a cone seen end on has
+no width to argue about, and what the lamp lays is a pool on the ground rather than a wedge across
+the picture. Patched asphalt is off, because the patch grid is scrolled sideways by a
+pixels-per-step that only an elevation has, and a fixed grid laid over a road that recedes is a
+texture standing still on a moving surface.
 
 Four knobs take hold at the top of the next loop rather than at once: lamp spacing, steps per lamp,
 the number of oncoming cars and the number of lit signs. All four re-cut a lattice, and a lattice
@@ -191,8 +362,19 @@ there is.
 - **The button and the automatic replay** strike the whole lamp line, and the headlights answer
   it.
 
-Every transient decays to exactly zero, and all three are inside half a loop, so a strike is always
-over before the loop it began in comes round again.
+The shot down the road reads depth instead, because that is the only thing it has. Each mast is
+asked first and answers for the two rectangles it actually drew — its own column and its own arm —
+so the road under an arm stays road; above the horizon belongs to the signs; and everything else is
+road, where a strike puts the brake lamps on and floods the tarmac behind the car with red. A
+strike in the sky takes the column it was aimed at and then steps out to the nearest housing in it
+that is dark, because striking a tube that is already running can only interrupt it, and what the
+hint beside the stage promises is a sign coming on. The
+button and the automatic replay run the lamp line from the horizon towards the eye, one pair at a
+time, and the ripple is stretched to whatever length the spacing knob has made the line so that it
+always reaches the near end before the transient that started it has run out.
+
+Every transient decays to exactly zero, and all of them are inside half a loop, so a strike is
+always over before the loop it began in comes round again.
 
 ## The film
 
@@ -204,12 +386,13 @@ Filming starts from a reset, and a reset here is deliberately a steady state: st
 transient running, every lamp already lit. A warm-up would otherwise sit inside every copy of the
 file, and the first frame would not match the last.
 
-The same run can be made ahead of time from the command line. At the declared defaults it is 48
-frames, 576 pixels wide, and it is written to the repository's `assets/highway-night.gif`, which is
-what the page at large shows of this animation:
+The same run can be made ahead of time from the command line. At the declared defaults each is 48
+frames, 576 pixels wide, and the two are written to `assets/highway-night.gif` and
+`assets/highway-side.gif`, which is what the page at large shows of this animation:
 
 ```
 node tools/gif.mjs --animation highway-night
+node tools/gif.mjs --animation highway-side
 node tools/poster.mjs --thumbs
 ```
 
@@ -221,14 +404,22 @@ palette's split between a cool sky above and warm ground below, and the shape a 
 on wet asphalt. It plays beside the stage as a single held frame: the animation's loop is four
 seconds and a still photograph has nothing to step through.
 
+The two assemblies crop it differently, because they read it for different things. The elevation
+takes the widest strip it can, 1600 × 636 from 81 pixels down, which is the band structure and
+nothing else. The shot down the road takes 1600 × 1000 from 30 pixels down, because a projection
+needs the height: the corridor runs away to a point about 62 per cent across the crop and halfway
+down it, the lamp line converges on that point, and the skyline stacks to the left of it. Those
+three observations are the vanishing column, the horizon, and where the towers stand — and they
+were measured off the crop by eye, at the crop's own scale, rather than derived from a lens.
+
 - File: `assets/tel-aviv-long-exposure.jpg`
 - Source page: <https://commons.wikimedia.org/wiki/File:Tel_aviv_long_exposure_public_domain_1.jpg>
 - Author: Equalhuman
 - Licence: CC0 1.0 Universal — <https://creativecommons.org/publicdomain/zero/1.0/>
 - Downloaded file: `Tel_aviv_long_exposure_public_domain_1.jpg`, 4928 × 3264, 7,613,726 bytes
-- Committed file: 1600 × 1060, downscaled and re-encoded, nothing else changed. The player fits
-  the plate into 480 × 191 and the file browser shows it no larger, so the original resolution
-  was seven and a half megabytes nobody could see.
+- Committed file: 1600 × 1060, downscaled and re-encoded, nothing else changed. The players fit
+  their crops into 480 × 200 and 480 × 300 and the file browser shows the plate no larger, so the
+  original resolution was seven and a half megabytes nobody could see.
 
 ## Reference car
 

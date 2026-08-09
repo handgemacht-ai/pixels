@@ -5,6 +5,14 @@
 // the horizon, the near block six pixels lower and so six pixels closer — and
 // the sign housings sit on the near block, dark, waiting to be lit.
 //
+// The shot down the road has no near block: there is no ground beside the
+// visitor for one to stand on, only a corridor running away from them, so the
+// far row is the whole skyline and the signs are bolted to it. That is one
+// setting rather than an argument because two callers a frame apart ask for
+// the same housings — the backdrop paints them dark and neon.js decides which
+// of them are lit — and a disagreement between the two would light a sign that
+// is not there.
+//
 // Nothing here scrolls. A side elevation has no parallax to spend: if the city
 // slid past at any rate at all it would either race the road or lag it, and
 // either way it would say the buildings are a fixed distance away, which is
@@ -26,16 +34,65 @@ var FAR_SEED = 17;
 var NEAR_SEED = 41;
 var SIGN_SEED = 71;
 
+// Which of the two pictures the city is being built for. Every stage builds a
+// backdrop before it draws anything, and the backdrop says which — so nothing
+// else has to.
+var DEEP = false;
+
+export function useSkyline(deep) { DEEP = !!deep; }
+
+// The occasional tower that is not like the others, and where it is allowed to
+// stand. With no near block in front of it the far row is the entire skyline,
+// and a row of evenly middling boxes reads as a fence: something has to go up
+// through it or the line has nowhere to look.
+//
+// Where that something stands is not a free choice. The road in this picture
+// does not run up the middle — the vanishing point is about three fifths of
+// the way across — and the plate puts its whole tower group to the left of
+// that point, with a low, thin run of city to the right of it. Picked on a
+// hash and nothing else the tallest tower lands wherever the hash falls, which
+// on this seed was three quarters of the way across: the weight of the picture
+// on the far side of the road from the one line the eye is meant to follow.
+//
+// So the row carries a shape as well as a hash. `at` is where the group stands
+// as a fraction of the stage, `span` how far it reaches, `floor` how much of a
+// tower is left standing out past it, and `tall` how deep inside the group a
+// tower has to be before it may be a landmark at all. The elevation passes
+// none of this and gets the row it always had, which is what keeps the two
+// pictures' skylines the separate things they are.
+var LANDMARK = {
+  chance: 0.5, minH: 22, spanH: 14,
+  at: 0.3, span: 0.32, floor: 0.24, tall: 0.765
+};
+
+// How much tower a column is entitled to: all of it at the middle of the
+// group, falling to `floor` out past it along a raised cosine, so the city
+// slopes away from the group instead of ending at its edge.
+function grouping(shape, centre) {
+  var t = (centre / VIEW_W - shape.at) / shape.span;
+  if (t <= -1 || t >= 1) return shape.floor;
+  return shape.floor + (1 - shape.floor) * 0.5 * (1 + Math.cos(t * Math.PI));
+}
+
 // A row of towers, walked left to right. Widths and heights are hashed on the
 // tower's index rather than on its position, because the row never moves and
-// so has no seam to protect.
-function towers(base, seed, minW, spanW, minH, spanH, minGap, spanGap) {
+// so has no seam to protect. Where a `shape` is offered the hash still decides
+// what kind of tower this is; the shape decides how much of it there is.
+function towers(base, seed, minW, spanW, minH, spanH, minGap, spanGap, shape) {
   var list = [];
   var x = -Math.round(6 * S);
   var i = 0;
+  var w, weight, big, h;
   while (x < VIEW_W && i < 200) {
-    var w = Math.max(2, Math.round((minW + hash01(i, 1, seed) * spanW) * S));
-    var h = Math.max(2, Math.round((minH + hash01(i, 2, seed) * spanH) * S));
+    w = Math.max(2, Math.round((minW + hash01(i, 1, seed) * spanW) * S));
+    weight = shape ? grouping(shape, x + w / 2) : 1;
+    // a landmark belongs to the group or it is not a landmark: out past it the
+    // same hash fires at the same rate and is simply never asked
+    big = !!shape && weight >= shape.tall && hash01(i, 4, seed) > 1 - shape.chance;
+    h = big
+      ? shape.minH + hash01(i, 2, seed) * shape.spanH
+      : (minH + hash01(i, 2, seed) * spanH) * weight;
+    h = Math.max(2, Math.round(h * S));
     list.push({ x: x, w: w, h: h, top: base - h });
     x += w + Math.max(1, Math.round((minGap + hash01(i, 3, seed) * spanGap) * S));
     i += 1;
@@ -44,8 +101,11 @@ function towers(base, seed, minW, spanW, minH, spanH, minGap, spanGap) {
 }
 
 // Behind the road: lighter than the near block, because distance at night is
-// haze rather than shadow.
+// haze rather than shadow. Seen down the road it is the only skyline there is,
+// so it runs lower and more varied — most of it well under the sky it stands
+// in, with the occasional landmark going up through it.
 export function farTowers() {
+  if (DEEP) return towers(HORIZON, FAR_SEED, 6, 9, 7, 15, -2, 6, LANDMARK);
   return towers(HORIZON, FAR_SEED, 6, 9, 10, 26, -2, 6);
 }
 
@@ -55,15 +115,14 @@ export function nearBlocks() {
   return towers(Y_RAIL, NEAR_SEED, 10, 16, 12, 18, 1, 5);
 }
 
-// The height of the near block under every column of the stage, so a sign can
+// The height of a row of towers under every column of the stage, so a sign can
 // be hung on the roof it belongs to rather than floating at a hashed height.
-export function nearTopLine() {
+function topLine(list, base) {
   var line = new Int16Array(VIEW_W);
-  var blocks = nearBlocks();
   var i, b, x, x1;
-  for (i = 0; i < VIEW_W; i++) line[i] = Y_RAIL;
-  for (i = 0; i < blocks.length; i++) {
-    b = blocks[i];
+  for (i = 0; i < VIEW_W; i++) line[i] = base;
+  for (i = 0; i < list.length; i++) {
+    b = list[i];
     x1 = Math.min(VIEW_W - 1, b.x + b.w - 1);
     for (x = Math.max(0, b.x); x <= x1; x++) {
       if (b.top < line[x]) line[x] = b.top;
@@ -72,13 +131,27 @@ export function nearTopLine() {
   return line;
 }
 
+export function nearTopLine() { return topLine(nearBlocks(), Y_RAIL); }
+
+export function farTopLine() { return topLine(farTowers(), HORIZON); }
+
+// Where the signs stand and how low they are allowed to hang: the near block
+// in the elevation, the far towers in the shot down the road, and in both
+// cases the ground that row of towers is standing on.
+function signGround() {
+  return DEEP
+    ? { line: farTopLine(), floor: HORIZON }
+    : { line: nearTopLine(), floor: Y_RAIL };
+}
+
 // The sign lattice: one housing per cell, always all of them, whatever the
 // `signs` knob says. The housings are part of the backdrop, and the backdrop
 // is only ever rebuilt when the stage changes size — so the knob decides how
 // many of these are lit, never how many exist. A city has more signs than are
 // working on any given night anyway.
 export function housings() {
-  var line = nearTopLine();
+  var ground = signGround();
+  var line = ground.line;
   var pitch = VIEW_W / SIGN_CELLS;
   var list = [];
   var cell, w, h, x, mid, top, roof, y;
@@ -94,7 +167,7 @@ export function housings() {
     roof = hash01(cell, 4, SIGN_SEED) < 0.5;
     y = roof ? top - h : top + Math.max(1, Math.round(2 * S));
     if (y < 0) y = 0;
-    if (y + h > Y_RAIL) y = Y_RAIL - h;
+    if (y + h > ground.floor) y = ground.floor - h;
     list.push({
       cell: cell, x: x, y: y, w: w, h: h, roof: roof,
       hue: Math.floor(hash01(cell, 5, SIGN_SEED) * NEON.length),
@@ -138,17 +211,19 @@ function windows(fill, t, seed, cold, warm) {
 // writes into its own canvas.
 export function paintCity(fill) {
   var far = farTowers();
-  var near = nearBlocks();
   var signs = housings();
-  var i;
+  var near, i;
 
   for (i = 0; i < far.length; i++) {
     block(fill, C.cityFar, far[i]);
     windows(fill, far[i], FAR_SEED + 5, 0.55, 0.88);
   }
-  for (i = 0; i < near.length; i++) {
-    block(fill, C.cityNear, near[i]);
-    windows(fill, near[i], NEAR_SEED + 5, 0.93, 0.985);
+  if (!DEEP) {
+    near = nearBlocks();
+    for (i = 0; i < near.length; i++) {
+      block(fill, C.cityNear, near[i]);
+      windows(fill, near[i], NEAR_SEED + 5, 0.93, 0.985);
+    }
   }
   // Unlit, every one of them: a housing is a box of ink with nothing in it
   // until neon.js decides tonight is its night.

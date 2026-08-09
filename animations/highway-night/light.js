@@ -167,7 +167,17 @@ export function addHaze(mat, c) {
 // pixels. It is what puts a halo in the sky over a cobra head and what makes
 // the head the brightest thing on the pole, and it lands on air and on solid
 // alike, because glare does.
-export function addBloom(b) {
+//
+// Alike, but not on everything. A source may name the materials its glare does
+// not reach, and the one that always has to is a lamp mounted on the thing
+// being looked at: a tail lamp's glare laid over its own bodywork does not read
+// as glare, it reads as the paint going white — which at nineteen pixels turns
+// a car with two lamps into a face with two eyes. Glare is light in the air
+// between the source and the eye, and the shell carrying the source is not in
+// front of itself. The mask is a lookup by material id and needs the material
+// buffer to read; a source that names none is handed neither, which is every
+// other source in the folder.
+export function addBloom(b, mat) {
   if (b.span <= 0.5 || b.gain <= 0) return;
   var reach = b.span * 2;
   var x0 = Math.max(0, Math.floor(b.x - reach));
@@ -175,6 +185,7 @@ export function addBloom(b) {
   var x1 = Math.min(VIEW_W - 1, Math.ceil(b.x + reach));
   var y1 = Math.min(VIEW_H - 1, Math.ceil(b.y + reach));
   var inv = 1 / (b.span * b.span);
+  var skip = (b.skip && mat) ? b.skip : null;
   var x, y, i, row, dx, dy, q, v;
   for (y = y0; y <= y1; y++) {
     dy = y + 0.5 - b.y;
@@ -184,6 +195,7 @@ export function addBloom(b) {
       q = (dx * dx + dy * dy) * inv;
       if (q > 4) continue;
       i = row + x;
+      if (skip && skip[mat[i]]) continue;
       v = b.gain / (q + 0.25);
       lux[i] += v;
       if (b.red) ruby[i] += v;

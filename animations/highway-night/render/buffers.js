@@ -3,13 +3,14 @@
 // The two buffers a frame is built in, the four words every stage here writes
 // into them with, and the pass that turns the pair into colour.
 //
-// Five stages share this file. They do not share a drawing order — the
-// assembled highway paints a whole road and four kinds of light, and a solo
-// paints one thing and takes everything else away — but they all build a frame
-// the same way: a material buffer saying what each pixel is made of, a light
-// field saying how much light landed on it, and one sweep that reads both.
-// Splitting that vocabulary out of the assembled path is what lets a solo be
-// one file rather than a copy of one.
+// Six stages share this file. They do not share a drawing order — the two
+// assemblies paint a whole road and four kinds of light, and a solo paints one
+// thing and takes everything else away — but they all build a frame the same
+// way: a material buffer saying what each pixel is made of, a light field
+// saying how much light landed on it, and one sweep that reads both. Splitting
+// that vocabulary out of the assembled paths is what lets a solo be one file
+// rather than a copy of one, and what lets a shot down the road reuse the
+// resolve that was written for a shot from the side.
 //
 // Nothing in here reads a knob. The resolve is handed the two numbers it used
 // to fetch out of P, because the stage that owns the knobs is the stage that
@@ -21,7 +22,7 @@ import { VIEW_W, VIEW_H, SPEED, LOOP, loopStep } from "../state.js";
 import {
   RAMP, ROAD, LANE, EDGE, TAILROAD, SHADOW, FARROAD
 } from "../palette.js";
-import { vnoiseLoop } from "../maths.js";
+import { vnoiseLoop, bayer4 } from "../maths.js";
 import { allocateLight, clearLight, lux, ruby, bandLevel } from "../light.js";
 import { forgetSigns } from "../neon.js";
 
@@ -96,16 +97,29 @@ export function slab(id, x0, y0, w, h) {
 var MOTTLE_CELLS = 16;
 var MOTTLE_SEED = 37;
 
+// Where a red pool stops being a red pool. More than half the light at a pixel
+// having come from a tail lamp is the honest test, and taken at exactly a half
+// it draws a hard ellipse on the tarmac: the material changes along one smooth
+// contour, and where the road either side of that contour is bright the two
+// ramps meet at their top steps with nothing in common. Every other edge in
+// this folder is carried by the ordered dither, and this one can be too —
+// asking a different share of each pixel of a small tile spreads the changeover
+// over a band a few pixels wide, so the red thins into the amber instead of
+// ending against it.
+var RED_EDGE = 0.34;
+
 // `texture` is which dither carries a value between two bands, `warmth` a band
-// offset on the road and its paint, and `mottle` whether the asphalt is patched
-// at all. The last one is not only a switch to look through: the mottle is
-// scrolled, and a stage that does not scroll has no cell width to scroll by, so
-// a still stage has to be able to say it is not asking for one.
-export function resolve(step, texture, warmth, mottle) {
+// offset on the road and its paint, `mottle` whether the asphalt is patched at
+// all, and `redEdge` whether the road's changeover to red is dithered. The last
+// two are not only switches to look through. The mottle is scrolled, and a
+// stage that does not scroll has no cell width to scroll by; and the elevation
+// wants the plain red test, because there the pool is a wedge on a band rather
+// than a circle on a plane and the join lies under the car anyway.
+export function resolve(step, texture, warmth, mottle, redEdge) {
   var cell = SPEED * LOOP / MOTTLE_CELLS;
   var scroll = SPEED * loopStep(step);
   var patched = mottle && cell > 0;
-  var x, y, i, m, L, level, colour;
+  var x, y, i, m, L, share, level, colour;
   for (y = 0; y < VIEW_H; y++) {
     for (x = 0; x < VIEW_W; x++) {
       i = y * VIEW_W + x;
@@ -123,7 +137,10 @@ export function resolve(step, texture, warmth, mottle) {
       // more than half the light here was red, so this is asphalt standing in
       // a tail lamp rather than under a street lamp, and it brightens towards
       // ruby instead of towards amber
-      if ((m === ROAD || m === FARROAD) && ruby[i] > 0.5 * L) m = TAILROAD;
+      if (m === ROAD || m === FARROAD) {
+        share = redEdge ? 0.5 + RED_EDGE * (bayer4(x, y) - 0.5) : 0.5;
+        if (ruby[i] > share * L) m = TAILROAD;
+      }
       level = bandLevel(L, x, y, texture);
       // the warmth knob is a band offset, and it is allowed on the road and
       // the paint only: shifting the whole picture would just be a brightness
