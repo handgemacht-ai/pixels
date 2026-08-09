@@ -229,6 +229,9 @@ export function createLighting(options) {
   // asks what it is lighting or in what order it arrived — which is the whole
   // value of the arrangement, and why a thing driving into a pool comes out
   // brighter than either would make it alone.
+  //
+  // Every kind only ever adds into lux and none of them reads it, which is what lets a
+  // caller see one source on its own by watching the accumulator grow.
   field.add = function (source) {
     var kind = (source && source.kind) || "point";
     if (kind === "point") addPoint(field, source);

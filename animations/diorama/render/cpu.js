@@ -76,6 +76,110 @@ var builtStamp = "";
 var reliefStamp = -1;
 var pending = [];
 
+// ---------------------------- the taps -------------------------------
+//
+// Live references to the buffers a frame is built out of, handed to whoever
+// asks and never copied — so a panel watching them is watching the same memory
+// the drawing path is writing, and can never be a step behind the stage.
+//
+// The five per-source fields are the exception, because there is no buffer
+// holding one source on its own: every source adds into the same accumulator.
+// They are worked out as the difference of running sums — what the accumulator
+// gained while that source was being added — which reads the accumulator and
+// never touches it, so a frame drawn with the panel open is the same frame byte
+// for byte. Nothing is allocated for them until they are asked for, and asking
+// stops the moment the panel closes.
+var TAPS = null;
+var WANTED = null;      // the ids asked for, or null: the state the page boots in
+var WANT = null;        // the same, as a lookup
+var slices = null;      // one field per requested source
+var running = null;     // the accumulator as it stood before the current source
+var resolveShot = null;
+
+var LUX_TAPS = ["lux:sky", "lux:sun", "lux:lamp", "lux:haze", "lux:bloom"];
+
+function buildTaps() {
+  TAPS = {
+    mat: { data: L.mat, width: VIEW_W, height: VIEW_H },
+    hgt: { data: L.hgt, width: VIEW_W, height: VIEW_H },
+    dep: { data: L.dep, width: VIEW_W, height: VIEW_H },
+    face: { data: L.face, width: VIEW_W, height: VIEW_H },
+    gain: { data: gainMap, width: VIEW_W, height: VIEW_H },
+    edge: { data: edge, width: VIEW_W, height: VIEW_H },
+    normals: { x: L.nx, y: L.ny, z: L.nz, width: VIEW_W, height: VIEW_H },
+    lux: { data: L.lux, width: VIEW_W, height: VIEW_H },
+    frame: { data: pixels, width: VIEW_W, height: VIEW_H },
+    lamp: { record: {} }
+  };
+}
+
+// The working room the captured stages need, made once per requested id and
+// again after a resize, and never for an id nobody asked about.
+function provide(wanted) {
+  var n = VIEW_W * VIEW_H;
+  var i, id;
+  for (i = 0; i < wanted.length; i++) {
+    id = wanted[i];
+    if (id === "resolve") {
+      if (!resolveShot) resolveShot = new Uint8ClampedArray(n * 4);
+      if (!TAPS.resolve) {
+        TAPS.resolve = { data: resolveShot, width: VIEW_W, height: VIEW_H };
+      }
+      continue;
+    }
+    if (LUX_TAPS.indexOf(id) < 0) continue;
+    if (!slices) slices = {};
+    if (!slices[id]) slices[id] = new Float32Array(n);
+    if (!TAPS[id]) {
+      TAPS[id] = { data: slices[id], width: VIEW_W, height: VIEW_H, record: {} };
+    }
+  }
+  if (slices && !running) running = new Float32Array(n);
+}
+
+// Every requested field starts the step at nothing, so a source that did not run
+// this step — the glare while the lamp is behind the tower — reads as the black
+// it actually contributed rather than as whatever it contributed last time.
+function startCapture() {
+  var i;
+  if (running) running.fill(0);
+  if (!slices) return;
+  for (i = 0; i < LUX_TAPS.length; i++) {
+    if (slices[LUX_TAPS[i]]) slices[LUX_TAPS[i]].fill(0);
+  }
+}
+
+function captureSource(src) {
+  var lux = L.lux;
+  var id = src.tap;
+  var slice = (id && slices) ? slices[id] : null;
+  var n, i, seen;
+  if (slice) {
+    // the descriptor list is scratch the orbit refills every step, so what the
+    // panel shows is copied out of it here and the object itself is never kept
+    seen = TAPS[id].record;
+    seen.kind = src.kind;
+    seen.gain = src.gain === undefined ? 1 : src.gain;
+    seen.span = src.span === undefined ? 0 : src.span;
+    n = VIEW_W * VIEW_H;
+    // added rather than assigned: two sources may share one tap, and the flare
+    // a strike makes is a second bloom under the lamp's own
+    for (i = 0; i < n; i++) slice[i] += lux[i] - running[i];
+  }
+  if (running) running.set(lux);
+}
+
+function recordLamp(lamp, hidden) {
+  var seen = TAPS.lamp.record;
+  seen.bearing = lamp.angle * 180 / Math.PI;
+  seen.x = lamp.x;
+  seen.y = lamp.y;
+  seen.height = lamp.h;
+  seen.depth = lamp.d;
+  seen.flicker = lamp.flick;
+  seen.behindTheTower = hidden ? 1 : 0;
+}
+
 function allocate() {
   L = createLighting({
     width: VIEW_W,
@@ -100,6 +204,13 @@ function allocate() {
   pixels = image.data;
   builtStamp = "";
   reliefStamp = -1;
+
+  // every buffer above is a new one, so the references handed out are stale
+  slices = null;
+  running = null;
+  resolveShot = null;
+  buildTaps();
+  if (WANTED) provide(WANTED);
 }
 
 function put(x, y, colour) {
@@ -218,13 +329,19 @@ function drawFrame(scene) {
 
   var lamp = lightAim(state, POINTER);
   var hidden = lampHidden(L, lamp);
+  if (WANT && WANT.lamp) recordLamp(lamp, hidden);
 
   L.clear();
   var list = sources(state, lamp, hidden, pending);
   var i;
-  for (i = 0; i < list.length; i++) L.add(list[i]);
+  if (WANT) startCapture();
+  for (i = 0; i < list.length; i++) {
+    L.add(list[i]);
+    if (WANT) captureSource(list[i]);
+  }
 
   touched = L.resolve(pixels, { texture: P.texture, gainMap: gainMap });
+  if (WANT && WANT.resolve && resolveShot) resolveShot.set(pixels);
 
   // One pass over the field for three things at once: how much of the model the
   // lamp is not reaching, how much of it it is, and the hard line a crest takes
@@ -284,6 +401,26 @@ export function createJavascriptBackend(ctx) {
 
     stats: function () { count.pixels = touched; return count; },
 
+    // What the pipeline panel reads, and the only thing that turns the capture
+    // on. `null` is the state the page boots in and the state it goes back to
+    // the moment the panel closes or the clock is held still, and in it the step
+    // costs exactly what it costs with no panel on the page.
+    taps: function (wanted) {
+      if (!TAPS) return null;
+      if (!wanted || !wanted.length) {
+        WANTED = null;
+        WANT = null;
+        return TAPS;
+      }
+      WANTED = wanted;
+      // a bare map rather than an object literal, so a stage named after
+      // something already on Object.prototype cannot read as asked-for
+      WANT = Object.create(null);
+      for (var i = 0; i < wanted.length; i++) WANT[wanted[i]] = true;
+      provide(wanted);
+      return TAPS;
+    },
+
     dispose: function () {
       L = null;
       gainMap = null;
@@ -291,6 +428,12 @@ export function createJavascriptBackend(ctx) {
       scratch = null;
       image = null;
       pixels = null;
+      TAPS = null;
+      WANTED = null;
+      WANT = null;
+      slices = null;
+      running = null;
+      resolveShot = null;
     }
   };
 }

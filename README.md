@@ -35,6 +35,11 @@ any of them was drawn by hand.
 PixiJS 8.19.0 is loaded from jsDelivr, pinned with a Subresource Integrity hash, and used for one
 thing: presenting a pixel buffer at nearest-neighbour scale.
 
+Cytoscape 3.34.0, cytoscape-dagre 4.0.0 and cytoscape-node-html-label 1.2.2 come from the same
+place, pinned the same way, and draw the pipeline panel. They are injected the first time that
+panel is opened and never fetched otherwise, so the page as it loads weighs what it weighed
+before the panel existed.
+
 ## What is where
 
 ```
@@ -50,6 +55,8 @@ platform/gif.js         a GIF89a writer, used by the page and by the tools
 platform/export.js      films the animation as it stands and hands over the file
 platform/light/         material and height in, lit pixels out — for animations that want it
 platform/ui/            switcher, controls, stats strip, file browser, sheet player, furniture
+platform/ui/taps.js     the pipeline panel: an animation's stages, drawn as the graph they form
+platform/ui/buffers.js  one painter per kind of buffer — no DOM, no scene, and it only ever reads
 animations/index.js     the registry
 animations/<id>/        one animation, everything it needs and nothing else
 tools/poster.mjs        writes the share image, the icons and the switcher stills
@@ -59,6 +66,10 @@ tools/lib/page.mjs      the seeded page the generators drive
 tools/out/              where the contact sheets land · not committed
 assets/                 those generated images, committed
 ```
+
+Every source kind in `platform/light/` only ever adds into the light field, and none of them reads
+it. That one rule is what lets a panel show a single source on its own: it watches the accumulator
+grow while the sources go in and takes the difference, rather than running anything a second time.
 
 ## Switching animations
 
@@ -80,7 +91,9 @@ browser, so it needs a server rather than a double-click. Any static server will
 npx serve .
 ```
 
-Then open the address it prints. An internet connection is needed for the PixiJS CDN script.
+Then open the address it prints. An internet connection is needed for the PixiJS CDN script, and
+for the graph library the pipeline panel fetches when it is first opened. Without one the rest of
+the page still works and the panel says the library did not load.
 
 ## Adding an animation
 
@@ -206,10 +219,21 @@ a backend and its animation can share whatever they like — and returns:
   setBackdrop(canvas),  // optional
   resize(w, h),         // optional
   stats(),              // optional — the numbers declared in the backend's `stats`
+  taps(wanted),         // optional — the buffers behind the declared pipeline stages
   gpuMs(),              // optional — measured GPU time for the last step, or -1
   env                   // optional — {label: value} rows for the environment strip
 }
 ```
+
+`taps(wanted)` is how a backend hands over the buffers it is building the frame out of. It is
+given the list of stage ids somebody is watching and returns a map of id to `{ data, width,
+height }` — or `{ x, y, z, width, height }` for a field of vectors, or `{ record }` for a handful
+of scalars. What it hands over is live references rather than copies, so a panel reading them is
+reading the same memory the path is writing. `taps(null)` says nobody is watching, which is the
+state a page boots in; the platform says it again at the top of `poster()` and of `record()`, so a
+still and a film are always drawn with nothing being captured. A stage that costs something to
+produce is produced only while its id is in `wanted`, and the frame is byte for byte the same
+either way.
 
 `surface` is a PixiJS-backed pixel surface: a canvas the size of the stage, blown up with
 nearest-neighbour scaling, with a backdrop behind the frame. A path that produces a pixel buffer
@@ -239,6 +263,19 @@ says why under the stats, and carries on with the others. If none start, the pag
 - **`files`** — `[{ path, sub, meta, open, alt, caption, pixelated }]`, the list the file browser
   shows. Paths are relative to the animation's folder and are fetched from the server, so what is
   on screen is what is being run. Only these files appear; nothing of the platform does.
+- **`pipeline`** — `{ nodes, edges }`, the stages the animation is built out of and what each one
+  is worked out from. A node is `{ id, label, kind, source, when, note, colours, range, legend }`.
+  `kind` is one of `code`, `index`, `scalar`, `mask`, `vector`, `lux`, `rgba` or `record`, and
+  decides how the buffer behind it is drawn: flat colours for a category, grey for a number, all
+  three channels for a normal, a heat ramp for a magnitude, straight across for a frame. `source`
+  is a path out of `files`, and clicking a stage opens it in the file browser. `when` labels the
+  stage `rebuild`, `relief` or `step`. `colours` gives a categorical stage its colours, `range`
+  fixes a scalar's scale where the animation knows it, and a scalar without one is drawn over what
+  is actually in the buffer with the reading printed under the picture. An edge is
+  `{ from, to }`, naming two declared nodes. Declaring a pipeline puts the pipeline panel on the
+  page: it draws the graph, redraws every preview at the animation's own cadence, and asks the
+  drawing path for the buffers through `taps()`. It asks for nothing while it is closed, and the
+  graph library it draws with is fetched from the CDN the first time somebody opens it.
 - **`poster`** — which frame stands in for the animation as a still, and how a whole run of it is
   filmed: `{ step, spot, backend, icon: { x, y, size }, film: { steps, scale, file } }`. `step` is
   how many steps into a run the frame is taken, `spot` where to start that run, `backend` which
