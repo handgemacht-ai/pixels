@@ -94,12 +94,12 @@ solo-city.js      the skyline alone, and nothing that scrolls
 
 state.js          the stage size, the ground ladder, and the constants latched per loop
 world.js          the scroll clock, the lattice and the transients
-palette.js        twenty-nine colours, thirteen material ramps
+palette.js        forty colours, thirteen material ramps
 maths.js          hash, value noise and the ordered dither
 light.js          the light field: cones, haze, bloom, and the banding that reads it
 neon.js           which signs are lit, which are flickering, and how a lit one reads
-skyline.js        the towers, their windows and the sign housings
-backdrop.js       sky, stars, city glow, both skylines — drawn once per stage size
+skyline.js        the towers at three depths, their windows, beacons and sign housings
+backdrop.js       sky, stars, the pollution band, every skyline — drawn once per stage size
 render/buffers.js the buffers, the resolve and the backend all six stages share
 
 road.js           the elevation's bands, rail, median, paint and grit
@@ -341,8 +341,8 @@ the number of oncoming cars and the number of lit signs. All four re-cut a latti
 re-cut halfway through a loop leaves the scroll out of step with itself and tears the seam open.
 Everything else applies immediately.
 
-The cone texture knob is the one that shows what the palette is doing. There are twenty-nine
-colours and no blending between them, so a light value that falls between two steps of a ramp has
+The cone texture knob is the one that shows what the palette is doing. There are forty colours
+and no blending between them, so a light value that falls between two steps of a ramp has
 to be carried some other way: an ordered dither stipples the two steps together, a scanline dither
 does it on alternate rows, and hard bands throw the remainder away and show the banding plain.
 

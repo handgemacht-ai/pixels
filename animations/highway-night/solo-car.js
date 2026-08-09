@@ -255,7 +255,7 @@ export default defineAnimation({
 
   palette: {
     colours: C,
-    title: "the same twenty-nine colours · the shell climbs its own four"
+    title: "the same forty colours · the shell climbs its own four"
   },
 
   stats: [

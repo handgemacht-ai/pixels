@@ -25,7 +25,7 @@
 // the fourth spacing, and rather than draw aliasing the picture stops drawing
 // masts and lets the light carry the rest of the line.
 
-import { P } from "../state.js";
+import { P, LOOP, loopStep } from "../state.js";
 import { C, AIR } from "../palette.js";
 import { clearLight, addHaze, addBloom } from "../light.js";
 import { paintCarriageway } from "../carriageway.js";
@@ -39,11 +39,18 @@ import {
   addCityFloor, addHorizonSmear
 } from "../groundlight.js";
 import { litSigns, paintNeon } from "../neon.js";
+import { beacons, BEACON_PHASES } from "../skyline.js";
 import { mat, put, slab, clearFrame, resolve, makeBackend } from "./buffers.js";
 
 // How many of the largest sign housings get a cross flare, as in the
 // elevation and for the same reason.
 var FLARES = 3;
+
+// How much of its own cycle an aviation beacon is lit for. Three eighths is a
+// long enough blink to be caught at twelve steps a second and short enough that
+// a skyline with half a dozen of them on it is never all lit at once, which is
+// what stops them reading as a row of red windows.
+var BEACON_ON = 3;
 
 // ------------------------- the material pass -------------------------
 
@@ -94,7 +101,16 @@ function lights(state, poles, cars, box, pairs) {
 // ---------------------------- the emitters ---------------------------
 
 function emitters(state, poles, cars, box) {
-  var i, k, p;
+  var i, k, p, lights, turn, since;
+
+  // the beacons first, because they are the furthest thing on the stage and
+  // everything else is drawn in front of them
+  lights = beacons();
+  turn = Math.floor(loopStep(state.step) * BEACON_PHASES / LOOP);
+  for (i = 0; i < lights.length; i++) {
+    since = ((turn - lights[i].phase) % BEACON_PHASES + BEACON_PHASES) % BEACON_PHASES;
+    if (since < BEACON_ON) put(lights[i].x, lights[i].y, C.tail);
+  }
 
   for (i = 0; i < poles.length; i++) {
     p = poles[i];

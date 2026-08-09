@@ -205,7 +205,7 @@ export function addBloom(b, mat) {
 
 // How much light there is, said in one of four bands.
 //
-// Twenty-nine fixed colours cannot be blended, so a value falling between two
+// Forty fixed colours cannot be blended, so a value falling between two
 // bands is carried by how many pixels of a small tile take the upper one.
 // Which tile is the demonstration knob: the ordered dither dissolves the
 // boundary into texture, the scanline setting throws it into alternating rows

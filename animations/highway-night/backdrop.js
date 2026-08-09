@@ -1,9 +1,10 @@
 "use strict";
 
 // Everything that never moves, drawn once per stage size and left alone behind
-// every frame: the banded sky, the stars the city has not washed out, the hump
-// of glow it pushes up instead, both skylines, the ground they stand on, and
-// the sign housings sitting dark on the near block.
+// every frame: the sky and the dithered joins between its tones, the stars the
+// city has not washed out, the layer of lit air standing on the horizon, every
+// row of skyline, the ground they stand on, and the sign housings sitting dark
+// on the row of towers they are bolted to.
 //
 // Splitting the static half of the picture off like this is not only thrift.
 // The frame the drawing path produces is transparent wherever nothing was
@@ -18,6 +19,24 @@ import { hash01, bayer4 } from "./maths.js";
 import { paintCity, useSkyline } from "./skyline.js";
 
 var STAR_SEED = 3;
+
+// How many rows either side of a tone change the two tones are stippled
+// together. Eleven rows of a sixty-row sky is a join wide enough to read as a
+// gradient and narrow enough that what lies either side of it is still a tone.
+var JOIN = 11;
+
+// Where the sky changes tone, as fractions of the height of the sky.
+var STOPS = [0, 0.40, 0.74];
+
+// The layer of dirty air the city is lit through: how deep it is, where its
+// middle stands, how far it reaches, and how much of it is left out past that.
+// The depth is a fraction of the width and not of the horizon, because it is a
+// thing in the world — so many metres of air — and the horizon moves with the
+// shape of the stage while the road, and therefore the scale, does not.
+var HAZE_DEPTH = 0.125;
+var HAZE_AT = 0.34;
+var HAZE_HALF = 0.78;
+var HAZE_FLOOR = 0.38;
 
 // What of the static half a stage wants. The first three default to on, so the
 // assembled highway asks for nothing and gets everything; a stage whose
@@ -50,46 +69,95 @@ export function makeBackdrop(options) {
     ctx.fillRect(x, y, w, h);
   }
 
-  var x, y, i, d, hump, strength;
+  var x, y, i, d, hump, band, next, into, s, f, amp, up, v, level;
 
   // ---------------------------- the sky --------------------------------
-  // Three flat bands rather than a gradient. A gradient at this resolution is
-  // a stack of one-pixel stripes anyway, and it would want colours that are
-  // not in the palette to make them; three bands with a hard edge is what the
-  // palette can actually say, and it is also what a long exposure of a city
-  // sky looks like once the sensor has clipped.
+  // Three tones, and eleven rows of ordered dither where each pair of them
+  // meets. This used to be three flat bands, and the reason given for them was
+  // that a gradient would want colours the palette has not got. The palette
+  // has them now — but that is not what changed the answer, because a gradient
+  // drawn as a colour a row would want sixty of them and no colour table is
+  // going to hold that. What changed is the join. Stippling two tones together
+  // over a dozen rows spends no colour at all: it spends the arrangement of the
+  // two it already has, and at this resolution the eye reads the arrangement as
+  // the colour in between rather than as a pattern.
+  var tones = [C.skyDeep, C.skyMid, C.skyLow];
+  var stops = [0, Math.round(STOPS[1] * HORIZON), Math.round(STOPS[2] * HORIZON)];
+  var join = Math.max(1, Math.round(JOIN * S));
   fill(C.skyDeep, 0, 0, VIEW_W, VIEW_H);
-  fill(C.skyMid, 0, Math.round(HORIZON * 0.42), VIEW_W, Math.round(HORIZON * 0.32));
-  fill(C.skyLow, 0, Math.round(HORIZON * 0.74), VIEW_W, HORIZON - Math.round(HORIZON * 0.74));
+  for (y = 0; y < HORIZON; y++) {
+    band = y >= stops[2] ? 2 : (y >= stops[1] ? 1 : 0);
+    fill(tones[band], 0, y, VIEW_W, 1);
+    next = band + 1;
+    if (next > 2) continue;
+    into = y - (stops[next] - join);
+    if (into < 0) continue;
+    // how much of this row is still the tone above, on a curve rather than a
+    // straight line: a linear join has a visible edge at each end of it, where
+    // the rate the stipple is thinning at changes all at once
+    s = 1 - into / (join + 1);
+    f = s * s * (3 - 2 * s);
+    for (x = 0; x < VIEW_W; x++) {
+      if (bayer4(x, y) >= f) fill(tones[next], x, y, 1, 1);
+    }
+  }
 
   // ---------------------------- the stars ------------------------------
   // Drawn before the glow, so the glow puts out the low ones. That is the
   // right way round: a city does not hide stars evenly, it hides the ones
-  // nearest its own light.
-  var stars = wantStars ? Math.round(50 * S) : 0;
+  // nearest its own light — and it hides them at a rate rather than at a line,
+  // which is why a star near the horizon is asked to survive a second hash
+  // instead of being cut off above one.
+  var stars = wantStars ? Math.round(64 * S) : 0;
   for (i = 0; i < stars; i++) {
     x = Math.floor(hash01(i, 1, STAR_SEED) * VIEW_W);
-    y = Math.floor(hash01(i, 2, STAR_SEED) * HORIZON * 0.86);
+    y = Math.floor(hash01(i, 2, STAR_SEED) * HORIZON);
+    if (hash01(i, 5, STAR_SEED) < y / HORIZON) continue;
     fill(C.star, x, y, 1, 1);
   }
 
-  // ---------------------------- the city glow --------------------------
-  // One broad hump over the tower cluster, solid where it meets the horizon
-  // and dissolving upwards on the ordered dither. There is no colour between
-  // `glow` and the sky bands to fade through, so the fade is carried by how
-  // many pixels of each little tile take the glow.
-  var cx = VIEW_W * 0.34;
-  var half = VIEW_W * 0.46;
-  var tall = wantGlow ? HORIZON * 0.62 : 0;
-  for (x = 0; x < VIEW_W; x++) {
-    d = (x - cx) / half;
-    if (d <= -1 || d >= 1) continue;
-    hump = tall * 0.5 * (1 + Math.cos(d * Math.PI));
-    if (hump < 1) continue;
-    for (y = HORIZON - 1; y > HORIZON - hump - 1; y--) {
-      if (y < 0) break;
-      strength = 1 - (HORIZON - y) / hump;
-      if (strength > bayer4(x, y)) fill(C.glow, x, y, 1, 1);
+  // ---------------------------- the pollution band ---------------------
+  // A layer of dirty air standing on the horizon, lit from underneath by the
+  // city inside it. It replaced a hump of a single colour, and the difference
+  // is that a layer has a temperature: sodium against the horizon where the
+  // light is coming from, violet a few rows up where it has scattered, and the
+  // last of the glow at the top of it where it gives out into the sky.
+  //
+  // Its depth is fixed and its brightness is what varies across the frame, not
+  // the other way about, because air does not stop at the edge of a city. The
+  // hump therefore rides on a floor rather than falling to nothing, and the
+  // right third of the sky — which the old hump did not reach at all — is no
+  // longer a flat column of the tone underneath it.
+  //
+  // It goes down before the skyline and not after, which was tried and is
+  // wrong. Laid over the towers the layer dissolves them: its brightest rows
+  // are the ones the city is standing in, and at the middle of the hump they
+  // are nearly solid, so the three depths that took the trouble to be three
+  // depths come back as one wash. The plate settles it as well — the glow on it
+  // is between the buildings and above them, and the buildings are silhouettes.
+  // The warm end of the layer is therefore mostly behind the city, and what
+  // carries the horizon in front of it is the lamp line's own smear.
+  //
+  // Four steps, of which the first is the sky already there: a value under the
+  // first band leaves the row alone, which is what makes the top of the layer
+  // dissolve instead of ending.
+  var ramp = [C.glow, C.skyHaze, C.skyEmber];
+  var rows = Math.round(HAZE_DEPTH * VIEW_W);
+  var cx = HAZE_AT * VIEW_W;
+  var half = HAZE_HALF * VIEW_W;
+  if (wantGlow) {
+    for (x = 0; x < VIEW_W; x++) {
+      d = (x - cx) / half;
+      hump = (d <= -1 || d >= 1) ? 0 : 0.5 * (1 + Math.cos(d * Math.PI));
+      amp = HAZE_FLOOR + (1 - HAZE_FLOOR) * hump;
+      for (y = Math.max(0, HORIZON - rows); y < HORIZON; y++) {
+        up = 1 - (HORIZON - y) / rows;
+        v = amp * 3 * up * up;
+        level = Math.floor(v);
+        if (v - level > bayer4(x, y)) level += 1;
+        if (level > 3) level = 3;
+        if (level > 0) fill(ramp[level - 1], x, y, 1, 1);
+      }
     }
   }
 

@@ -161,7 +161,7 @@ function createHighway() {
 export default defineAnimation({
   id: "highway-night",
   title: "Night highway, lit by its own lamps",
-  tagline: "192 x 120 pixels · 29 colours · one integer of state · four seconds round",
+  tagline: "192 x 120 pixels · 40 colours · one integer of state · four seconds round",
   base: new URL(".", import.meta.url).href,
   action: { verb: "Strike", noun: "strike" },
 
@@ -287,7 +287,7 @@ export default defineAnimation({
   // ---------------------------- the palette ----------------------------
   palette: {
     colours: C,
-    title: "twenty-nine colours: warm below, cool above, neon only on the signs"
+    title: "forty colours: warm below, cool above, neon only on the signs"
   },
 
   // -------------------- the plate beside the stage ---------------------
@@ -350,7 +350,7 @@ export default defineAnimation({
       meta: "knob values, the horizon, and what may only change on a loop boundary" },
     { path: "world.js", sub: "the transients and the strike kinds",
       meta: "shared with the elevation · the lattice half of it belongs to the side view" },
-    { path: "palette.js", sub: "twenty-nine colours and thirteen ramps",
+    { path: "palette.js", sub: "forty colours and thirteen ramps",
       meta: "the GIF's colour table, and what every material brightens along" },
     { path: "maths.js", sub: "hash, value noise, ordered dither",
       meta: "nothing here calls Math.random" },
