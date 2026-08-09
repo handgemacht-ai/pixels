@@ -5,19 +5,23 @@ animation is a self-contained folder that registers what it is and what it needs
 builds the page around it — stage, control panel, stats strip, reference playback and file browser
 — out of that registration and nothing else.
 
-There are two animations:
+There are three animations:
 
 - [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
   over, once in JavaScript and once in fragment shaders.
 - [`animations/dog-walk`](animations/dog-walk) — a pixel-art mastiff whose walk is solved from an
   internal skeleton, held frame for frame against Muybridge's plate 706 of 1887.
+- [`animations/highway-night`](animations/highway-night) — a night expressway seen square from the
+  side, lit only by its own lamps, carrying one integer of state and a loop that closes exactly.
 
 ![One blast: fifty steps of the procedural explosion, drawn at four times its size](assets/fire-explosion.gif)
 
 ![Two strides of the dog, drawn at four times its size](assets/dog-walk.gif)
 
+![One lap of the night highway: forty-eight steps, drawn at three times its size](assets/highway-night.gif)
+
 Every frame above came out of the animation itself — a seeded run, filmed step by step. Nothing in
-either was drawn by hand.
+any of them was drawn by hand.
 
 PixiJS 8.19.0 is loaded from jsDelivr, pinned with a Subresource Integrity hash, and used for one
 thing: presenting a pixel buffer at nearest-neighbour scale.
@@ -387,4 +391,5 @@ Then load the site and check the console, rather than trusting the deploy's own 
 
 The platform and the animations are original work. Reference material carries its own licence,
 named in each animation's own README — for `fire-explosion`, a CC0 1.0 sprite sheet and a
-public-domain photograph; for `dog-walk`, a public-domain Muybridge plate.
+public-domain photograph; for `dog-walk`, a public-domain Muybridge plate; for `highway-night`,
+five CC0 1.0 files — three photographs, a pixel-art car sprite and a pixel-art animation.

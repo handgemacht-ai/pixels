@@ -6,8 +6,9 @@
 
 import fireExplosion from "./fire-explosion/index.js";
 import dogWalk from "./dog-walk/index.js";
+import highwayNight from "./highway-night/index.js";
 
-export var ANIMATIONS = [fireExplosion, dogWalk];
+export var ANIMATIONS = [fireExplosion, dogWalk, highwayNight];
 
 export function pickAnimation(id) {
   for (var i = 0; i < ANIMATIONS.length; i++) {
