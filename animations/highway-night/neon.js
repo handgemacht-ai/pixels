@@ -89,6 +89,27 @@ export function biggestSigns(count) {
   return out;
 }
 
+// The nearest housing with nothing in it, walking outwards from the cell asked
+// for. A visitor clicking the sky is asking for a sign to come on, and the cell
+// under the click is as likely as not one that is already lit — where a strike
+// only stutters a running tube, which is the opposite of what was asked for.
+// Stepping out to the first dark cell keeps the strike where it was aimed,
+// within a housing or two, and makes it do the thing the stage hint promises.
+// When every housing is lit there is nothing dark to find and the cell asked
+// for comes back unchanged, which is the honest answer: on a night when the
+// whole skyline is burning, striking it can only interrupt.
+export function darkSignNear(cell) {
+  var all = signs();
+  var i, k;
+  for (i = 0; i < all.length; i++) {
+    k = cell - i;
+    if (k >= 0 && order[k] >= SIGNS) return all[k].cell;
+    k = cell + i;
+    if (k < all.length && order[k] >= SIGNS) return all[k].cell;
+  }
+  return cell;
+}
+
 // A strike names one sign, or — where a stage strikes several at once — a
 // handful of them. Both arrive as `struck`, and neither is a special case
 // worth a second field on the state.

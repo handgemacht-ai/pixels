@@ -281,7 +281,7 @@ export default defineAnimation({
   files: [
     { path: "solo-traffic.js", open: true, sub: "the whole of this stage",
       meta: "one registration and one drawing path, in one file" },
-    { path: "README.md", sub: "the animation all five stages come out of",
+    { path: "README.md", sub: "the animation all six stages come out of",
       meta: "shared with the assembled highway and the other three solos" },
     { path: "traffic.js", sub: "the other carriageway",
       meta: "two rows on their own lattice, at whole quarters of the scroll speed" },

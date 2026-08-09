@@ -266,7 +266,7 @@ export default defineAnimation({
   files: [
     { path: "solo-car.js", open: true, sub: "the whole of this stage",
       meta: "one registration and one drawing path, in one file" },
-    { path: "README.md", sub: "the animation all five stages come out of",
+    { path: "README.md", sub: "the animation all six stages come out of",
       meta: "shared with the assembled highway and the other three solos" },
     { path: "car.js", sub: "the shell, the wheels and the shade under them",
       meta: "level, and it reads no knob at all" },

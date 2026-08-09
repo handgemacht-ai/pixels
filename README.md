@@ -5,17 +5,17 @@ animation is a self-contained folder that registers what it is and what it needs
 builds the page around it — stage, control panel, stats strip, reference playback and file browser
 — out of that registration and nothing else.
 
-There are four animations and eight entries in the switcher — the night highway registers four
-solo stages beside itself, each standing one part of the picture on its own:
+There are four animations and nine entries in the switcher — the night highway registers a second
+view of itself and four solo stages beside it, each standing one part of the picture on its own:
 
 - [`animations/fire-explosion`](animations/fire-explosion) — a procedural explosion, drawn twice
   over, once in JavaScript and once in fragment shaders.
 - [`animations/dog-walk`](animations/dog-walk) — a pixel-art mastiff whose walk is solved from an
   internal skeleton, held frame for frame against Muybridge's plate 706 of 1887.
-- [`animations/highway-night`](animations/highway-night) — a night expressway seen square from the
-  side, lit only by its own lamps, carrying one integer of state and a loop that closes exactly.
-  It registers five stages: the assembled highway, and four that stand the car, the lamps, the far
-  carriageway and the skyline on their own.
+- [`animations/highway-night`](animations/highway-night) — a night expressway lit only by its own
+  lamps, carrying one integer of state and a loop that closes exactly. It registers six stages:
+  the road seen down its own length, the same road seen square from the side, and four that stand
+  the car, the lamps, the far carriageway and the skyline on their own.
 - [`animations/diorama`](animations/diorama) — a ruined tower seen three quarters from above, built
   out of one function and lit by one lamp going round it, which is the only thing that moves.
 
@@ -23,7 +23,9 @@ solo stages beside itself, each standing one part of the picture on its own:
 
 ![Two strides of the dog, drawn at four times its size](assets/dog-walk.gif)
 
-![One lap of the night highway: forty-eight steps, drawn at three times its size](assets/highway-night.gif)
+![One lap of the night highway seen down its own length: forty-eight steps, drawn at three times its size](assets/highway-night.gif)
+
+![The same lap seen square from the side: forty-eight steps, drawn at three times its size](assets/highway-side.gif)
 
 ![One lap of the lamp around the ruined tower: forty-eight steps, drawn at four times its size](assets/diorama.gif)
 

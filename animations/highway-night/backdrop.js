@@ -15,20 +15,30 @@
 import { VIEW_W, VIEW_H, S, HORIZON, Y_RAIL } from "./state.js";
 import { C } from "./palette.js";
 import { hash01, bayer4 } from "./maths.js";
-import { paintCity } from "./skyline.js";
+import { paintCity, useSkyline } from "./skyline.js";
 
 var STAR_SEED = 3;
 
-// What of the static half a stage wants. All three default to on, so the
+// What of the static half a stage wants. The first three default to on, so the
 // assembled highway asks for nothing and gets everything; a stage whose
 // subject is the road turns the city and its glow off, because a skyline
 // behind a thing being examined is decoration and decoration is what a solo
 // is for taking away.
+//
+// `deep` is the fourth, and it is not a piece being taken away: it says which
+// of the two pictures this is. A shot down the road has no ground beside the
+// visitor and therefore no near block, and everything below its horizon is
+// road rather than a six-pixel embankment. Every stage builds a backdrop
+// before it draws anything, so saying it here is saying it once — skyline.js
+// hangs the signs on whichever row of towers is left standing.
 export function makeBackdrop(options) {
   var wanted = options || {};
   var wantCity = wanted.city !== false;
   var wantStars = wanted.stars !== false;
   var wantGlow = wanted.glow !== false;
+  var deep = wanted.deep === true;
+
+  useSkyline(deep);
 
   var canvas = document.createElement("canvas");
   canvas.width = VIEW_W;
@@ -86,8 +96,11 @@ export function makeBackdrop(options) {
   // ---------------------------- the far ground -------------------------
   // The strip between the horizon and the guard rail: the embankment the city
   // stands on. One lit pixel along the top, where the city's own glow catches
-  // the far kerb, and dark below it.
-  fill(C.ink, 0, HORIZON, VIEW_W, Y_RAIL - HORIZON);
+  // the far kerb, and dark below it. Down the road there is no embankment and
+  // no rail, and what lies below the horizon is ground all the way to the
+  // bottom of the frame — the corridor is painted over most of it, and what is
+  // left showing is the verge either side, which at night is simply dark.
+  fill(C.ink, 0, HORIZON, VIEW_W, deep ? VIEW_H - HORIZON : Y_RAIL - HORIZON);
   fill(C.road, 0, HORIZON, VIEW_W, 1);
 
   // ---------------------------- the city -------------------------------

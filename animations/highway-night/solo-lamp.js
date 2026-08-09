@@ -247,7 +247,7 @@ export default defineAnimation({
   files: [
     { path: "solo-lamp.js", open: true, sub: "the whole of this stage",
       meta: "one registration and one drawing path, in one file" },
-    { path: "README.md", sub: "the animation all five stages come out of",
+    { path: "README.md", sub: "the animation all six stages come out of",
       meta: "shared with the assembled highway and the other three solos" },
     { path: "pole.js", sub: "mast, arm and cobra head",
       meta: "the one silhouette in the animation with no reference behind it" },

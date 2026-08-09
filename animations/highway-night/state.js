@@ -5,11 +5,12 @@
 // measured against: the ladder of ground bands, and the handful of world
 // constants that are only allowed to change on a loop boundary.
 //
-// Five stages share this file: the assembled highway and the four solos that
-// take one part of it out and put it on its own. They share the modules but
-// not the knobs, so the guard in useParams() is load-bearing — a stage that
-// draws a cone without offering a cone-spread knob would otherwise read
-// undefined, arrive at NaN, and go silently black rather than saying so.
+// Six stages share this file: two assemblies of the same road — one seen
+// square from the side, one seen down its length — and the four solos that
+// take one part of the elevation out and put it on its own. They share the
+// modules but not the knobs, so the guard in useParams() is load-bearing — a
+// stage that draws a cone without offering a cone-spread knob would otherwise
+// read undefined, arrive at NaN, and go silently black rather than saying so.
 
 // The knob values. The same object the control panel writes into, so a knob
 // moved on screen is read on the next step without anything being copied.
@@ -106,6 +107,30 @@ export function useParams(params, needs) {
         '" and does not declare it');
     }
   }
+}
+
+// ---------------------------------------------------------------------
+// The other stage: a shot down the road rather than across it.
+//
+// There is no ladder here and there is nothing for one to hold. Depth in a
+// perspective shot is per row and belongs to camera.js, so all this settles is
+// how much of the frame is road — and therefore where the horizon sits, which
+// is the one number every other module in that picture is measured from.
+//
+// It is pinned to the width, exactly as the ladder is, and for the same
+// reason: the road is 0.3125 of a stage width deep whatever shape the stage
+// is, so the square setting adds sky and never touches the carriageway. At 192
+// pixels across that is 60 rows of road, which puts the horizon halfway down a
+// 16:10 stage and a little over two thirds of the way down a square one.
+// ---------------------------------------------------------------------
+var ROAD_FRACTION = 0.3125;
+
+export function setStageDeep(width, height) {
+  VIEW_W = width;
+  VIEW_H = height;
+  S = width / 192;
+  GROUND_H = Math.round(ROAD_FRACTION * width);
+  HORIZON = VIEW_H - GROUND_H;
 }
 
 export function setStage(width, height) {

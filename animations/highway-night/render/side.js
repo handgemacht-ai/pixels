@@ -1,6 +1,6 @@
 "use strict";
 
-// The assembled highway's drawing path, and the order it works in.
+// The side elevation's drawing path, and the order it works in.
 //
 // A frame is not painted. It is built in four sweeps over two buffers the size
 // of the stage, and only the third of them knows anything about colour:
@@ -26,7 +26,8 @@
 //
 // The buffers themselves, and the resolve that reads them, are in buffers.js:
 // the four solo stages build a frame the same way out of fewer parts, and the
-// only thing that differs between one stage's path and another's is the three
+// shot down the road builds one out of different parts entirely, so the only
+// thing that differs between one stage's path and another's is the three
 // sweeps below.
 
 import { S, P } from "../state.js";

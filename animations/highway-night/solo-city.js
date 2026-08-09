@@ -206,7 +206,7 @@ export default defineAnimation({
   files: [
     { path: "solo-city.js", open: true, sub: "the whole of this stage",
       meta: "one registration and one drawing path, in one file" },
-    { path: "README.md", sub: "the animation all five stages come out of",
+    { path: "README.md", sub: "the animation all six stages come out of",
       meta: "shared with the assembled highway and the other three solos" },
     { path: "neon.js", sub: "which signs are lit, and which are flickering",
       meta: "emitters · drawn after the light is resolved and never re-lit" },
