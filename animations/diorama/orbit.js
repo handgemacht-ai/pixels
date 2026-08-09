@@ -129,10 +129,17 @@ export function lampHidden(field, lamp) {
 // one accumulator and never compared, so the place where the lamp's pool crosses
 // the sky's fill is brighter than either — which is the whole reason for adding
 // them rather than taking the brightest.
+//
+// `tap` names the source for anything watching the accumulator grow. It is a
+// name rather than a place in this list, because the list is not the same length
+// every step — the glare goes when the lamp is behind the tower, and a strike
+// adds a sixth — and a watcher keyed on position would relabel every source the
+// moment one of them was missing. The light module never reads it.
 export function sources(state, lamp, hidden, out) {
   out.length = 0;
 
   out.push({
+    tap: "lux:sky",
     kind: "ambient",
     ax: 0, ay: 0, az: -1,
     gain: P.ambient * AMBIENT_GAIN,
@@ -143,6 +150,7 @@ export function sources(state, lamp, hidden, out) {
   });
 
   out.push({
+    tap: "lux:sun",
     kind: "sun",
     ax: SUN.x, ay: SUN.y, az: SUN.z,
     gain: P.sky * SKY_GAIN,
@@ -151,6 +159,7 @@ export function sources(state, lamp, hidden, out) {
   });
 
   out.push({
+    tap: "lux:lamp",
     kind: "point",
     x: lamp.x, y: lamp.y, h: lamp.h, d: lamp.d,
     span: P.lightReach * LAMP_SPAN * S,
@@ -167,6 +176,7 @@ export function sources(state, lamp, hidden, out) {
   // itself can be seen: light leaking round the edge of a wall is the strongest
   // evidence there is that something is behind it
   out.push({
+    tap: "lux:haze",
     kind: "haze",
     x: lamp.x, y: lamp.y, h: lamp.h, d: lamp.d,
     span: HAZE_SPAN * S,
@@ -178,6 +188,7 @@ export function sources(state, lamp, hidden, out) {
   // A halo over a wall with nothing in the middle of it reads as a fault.
   if (!hidden) {
     out.push({
+      tap: "lux:bloom",
       kind: "bloom",
       x: lamp.x, y: lamp.y,
       span: BLOOM_SPAN * S,
@@ -187,6 +198,9 @@ export function sources(state, lamp, hidden, out) {
 
   if (state.flare > 0) {
     out.push({
+      // the same tap as the lamp's own halo: a strike is a bloom too, and the
+      // two are the same kind of light landing on the same air
+      tap: "lux:bloom",
       kind: "bloom",
       x: state.spotX, y: state.spotY,
       span: FLARE_SPAN * S,

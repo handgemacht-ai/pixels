@@ -110,6 +110,70 @@ function normaliseFile(raw, base, index) {
   };
 }
 
+// ------------------------------ the pipeline -------------------------
+//
+// What an animation is made of, said as the graph it already is: one node per
+// stage the drawing path can hand over, one edge per thing a stage is worked
+// out from. Optional, and read by nothing that draws — an animation that says
+// nothing gets no panel and pays nothing.
+//
+// The kinds are closed because each one is a way of looking at a buffer, and
+// the panel has exactly one painter per kind. A stage the panel could not draw
+// would be a hole in the graph nobody notices until they open it.
+var TAP_KINDS = ["code", "index", "scalar", "mask", "vector", "lux", "rgba", "record"];
+
+function normalisePipeline(raw, files) {
+  if (!raw) return null;
+  must(Array.isArray(raw.nodes) && raw.nodes.length, "pipeline needs at least one node");
+  must(Array.isArray(raw.edges), "pipeline needs an edges list, even an empty one");
+
+  var paths = files.map(function (file) { return file.path; });
+  var ids = [];
+  var nodes = raw.nodes.map(function (node, i) {
+    must(node && node.id, "pipeline node " + i + " needs an id");
+    must(node.label, 'pipeline node "' + node.id + '" needs a label');
+    must(ids.indexOf(node.id) < 0, 'pipeline node "' + node.id + '" is declared twice');
+    ids.push(node.id);
+    must(TAP_KINDS.indexOf(node.kind) >= 0,
+      'pipeline node "' + node.id + '" has an unknown kind "' + node.kind +
+      '" (' + TAP_KINDS.join(", ") + ")");
+    // the node says where to read the stage that made it, and the file browser
+    // is the only place that can be read, so it has to be a file the animation
+    // actually registered
+    must(paths.indexOf(node.source) >= 0,
+      'pipeline node "' + node.id + '" names a source "' + node.source +
+      '" that is not one of the animation\'s files');
+    if (node.range !== undefined && node.range !== null) {
+      must(Array.isArray(node.range) && node.range.length === 2 &&
+        typeof node.range[0] === "number" && typeof node.range[1] === "number" &&
+        node.range[0] < node.range[1],
+        'pipeline node "' + node.id + '" has a range that is not [low, high]');
+    }
+    return {
+      id: node.id,
+      label: node.label,
+      kind: node.kind,
+      source: node.source,
+      when: node.when || "",
+      note: node.note || "",
+      colours: node.colours || null,
+      range: node.range || null,
+      legend: node.legend || ""
+    };
+  });
+
+  var edges = raw.edges.map(function (edge, i) {
+    must(edge && edge.from && edge.to, "pipeline edge " + i + " needs a from and a to");
+    must(ids.indexOf(edge.from) >= 0,
+      'pipeline edge ' + i + ' comes from an undeclared node "' + edge.from + '"');
+    must(ids.indexOf(edge.to) >= 0,
+      'pipeline edge ' + i + ' goes to an undeclared node "' + edge.to + '"');
+    return { from: edge.from, to: edge.to };
+  });
+
+  return { nodes: nodes, edges: edges };
+}
+
 function normaliseStats(raw, owner) {
   return (raw || []).map(function (cell, i) {
     must(cell && cell.key, owner + " stat " + i + " needs a key");
@@ -214,6 +278,11 @@ export function defineAnimation(spec) {
     };
   }
 
+  var files = (spec.files || []).map(function (file, i) {
+    return normaliseFile(file, spec.base, i);
+  });
+  var pipeline = normalisePipeline(spec.pipeline, files);
+
   var action = spec.action || {};
 
   // The still that stands in for the animation: a step of a seeded run, drawn
@@ -265,7 +334,8 @@ export function defineAnimation(spec) {
     replay: checkBinding(spec.replay === undefined ? 0 : spec.replay, keys, "replay"),
     palette: palette,
     reference: reference,
-    files: (spec.files || []).map(function (file, i) { return normaliseFile(file, spec.base, i); }),
+    files: files,
+    pipeline: pipeline,
     stats: normaliseStats(spec.stats, 'animation "' + spec.id + '"'),
     backends: backends,
     defaultBackend: defaultBackend,

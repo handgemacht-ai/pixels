@@ -9,6 +9,7 @@ import { C } from "./palette.js";
 import { useParams, usePointer, setStage } from "./state.js";
 import { createWorld } from "./world.js";
 import { makeBackdrop } from "./backdrop.js";
+import { PIPELINE } from "./pipeline.js";
 import { createJavascriptBackend } from "./render/cpu.js";
 
 export default defineAnimation({
@@ -152,9 +153,17 @@ export default defineAnimation({
       meta: "nothing here calls Math.random" },
     { path: "backdrop.js", sub: "the void and its vignette",
       meta: "drawn once per stage size, behind every frame" },
+    { path: "pipeline.js", sub: "every stage, and how to look at it",
+      meta: "what the pipeline panel is built from · seventeen stages and the links between them" },
     { path: "render/cpu.js", sub: "the drawing path",
       meta: "clear the light, add the sources, resolve, then the emitters" }
   ],
+
+  // -------------------- the pipeline, as a graph -----------------------
+  // Opt-in, and read by nothing that draws. The panel it builds asks the
+  // drawing path for the buffers these stages name, and asks for nothing at all
+  // while it is closed.
+  pipeline: PIPELINE,
 
   // -------------------- the one way it can be drawn --------------------
   backends: [

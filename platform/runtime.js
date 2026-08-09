@@ -150,6 +150,16 @@ export async function startAnimation(spec, stageEl) {
     }
   }
 
+  // Whatever a panel asked a drawing path to capture is dropped the moment the
+  // clock is held still. It is said here, once, at the top of both places that
+  // hold it still, rather than trusted to every panel putting itself away in
+  // time: a poster and a film have to cost what they cost with nothing watching.
+  function hushTaps() {
+    live.forEach(function (entry) {
+      if (entry.instance.taps) entry.instance.taps(null);
+    });
+  }
+
   function announce() {
     document.dispatchEvent(new CustomEvent("pixels:detonate", {
       detail: { animation: spec.id, fps: cadence(), noun: spec.action.noun }
@@ -217,6 +227,7 @@ export async function startAnimation(spec, stageEl) {
     var drawnBy = chosen(wanted.backend || spec.poster.backend);
 
     posing = true;
+    hushTaps();
     // a poster is posed from a seeded run and nothing else, so whatever the
     // mouse happened to be doing is not allowed into it
     pointer.inside = false;
@@ -257,6 +268,7 @@ export async function startAnimation(spec, stageEl) {
     var onStep = wanted.onStep || function () {};
 
     posing = true;
+    hushTaps();
     // the same for a film: every frame of it has to be the frame any other
     // machine would have drawn
     pointer.inside = false;
@@ -397,6 +409,8 @@ export async function startAnimation(spec, stageEl) {
     metrics: METRICS,
     env: ENV,
     palette: spec.palette,
+    // the stages the animation declares, if it declares any
+    pipeline: spec.pipeline,
     // how a whole run is filmed, if the animation says it can be
     film: spec.poster.film,
     filmSteps: filmSteps,
@@ -444,6 +458,16 @@ export async function startAnimation(spec, stageEl) {
     },
 
     detonate: function (spot) { detonate(spot || null); },
+
+    // The buffers the drawing path is building the frame out of, for a panel
+    // that wants to look at them. `wanted` is the ids it is asking to have
+    // captured, and nothing at all is captured for an id nobody named. Never
+    // while the clock is standing still: a poster or a film is the frame any
+    // other machine would draw, and it is drawn with nothing watching.
+    taps: function (wanted) {
+      if (posing) return null;
+      return current.instance.taps ? current.instance.taps(wanted) : null;
+    },
 
     capture: function (fn) { pendingGrab = fn; },
 

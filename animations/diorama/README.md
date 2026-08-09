@@ -42,6 +42,7 @@ model.js       solid(X, Y, Z), and the splat that turns it into a field
 orbit.js       where the lamp is, and every source in the scene
 world.js       the clock: one integer, two transients
 backdrop.js    the void, the vignette and the specks — drawn once per stage size
+pipeline.js    the seventeen stages of the above, and how each one should be looked at
 render/cpu.js  the drawing path: rebuild, clear, add, resolve, emitters
 ```
 
@@ -209,6 +210,37 @@ which is the part of it standing in the dark most of the time.
 
 Both transients decay to exactly zero, and both are gone inside half a lap however long the lap has
 been set, so a strike is always over before the lap it began in comes round again.
+
+## The pipeline panel
+
+`pipeline.js` names the seventeen stages a frame is built out of and the twenty-nine links between
+them, and the **pipeline** panel draws that as a graph with a live picture of every stage on the
+node that produces it. The layers run left to right in the order the work happens: `solid(X, Y, Z)`,
+then the four buffers the splat fills, then the gain map and the silhouette baked on top of them,
+then the normals, then the lamp and the five fields the sources add, then the accumulator, the
+resolve and the frame.
+
+Each stage is drawn the way its numbers deserve. The material map uses this scene's own colours, so
+it is recognisably the same tower. Height and depth are greys over whatever is in the buffer, with
+the reading printed underneath, because both are quoted in stage pixels and both change with the
+stage size. The gain map has a fixed scale, `0` to `1.3`, because it is a multiplier and the
+interesting thing about it is where it sits against 1. Normals go into the three channels. Light
+goes on a heat ramp scaled to its own field, which is the only way the sky's fill and the lamp's
+pool are both visible: at the default knobs they are two orders of magnitude apart.
+
+The five per-source fields do not exist in the animation. Every source adds into one accumulator,
+and the panel gets them by taking the difference of the running sums — what the accumulator gained
+while that source was going in. Nothing is run twice and nothing is written back, so the frame on
+the stage is the same frame with the panel open or shut. The glare field holds the lamp's own halo
+and the flare a strike makes, because both of them are blooms.
+
+The panel costs nothing until it is opened: the graph library is fetched on that first click, and
+the drawing path is only asked to capture the per-source fields while it is open. Holding the clock
+still to pose a still or film a run hands all of it back first, so `assets/diorama.gif` comes out
+byte for byte the same whatever is on the page.
+
+Clicking a stage enlarges it, prints its reading, and opens the file it comes out of in the browser
+below.
 
 ## The film
 

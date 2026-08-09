@@ -124,10 +124,22 @@ export function initExplorer(spec) {
     list.appendChild(button);
   });
 
+  // Another panel asking for a file to be opened here. It names a path and
+  // nothing else, so a panel that wants to point at a file does not have to know
+  // anything about this one — and a path this animation does not list is
+  // ignored rather than half-opened.
+  function requested(event) {
+    var wanted = event.detail && event.detail.path;
+    var file = spec.files.filter(function (f) { return f.path === wanted; })[0];
+    if (file) show(file);
+  }
+  document.addEventListener("pixels:open-file", requested);
+
   var opening = spec.files.filter(function (f) { return f.open; })[0] || spec.files[0];
   show(opening);
 
   return function () {
+    document.removeEventListener("pixels:open-file", requested);
     if (imageEl) {
       imageEl.removeEventListener("load", measured);
       imageEl.removeAttribute("src");
