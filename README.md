@@ -380,7 +380,7 @@ stale site, or one whose modules will not load, while the `*.pages.dev` deployme
 perfectly fine, which makes it easy to miss. Purge every path the deploy touched:
 
 ```
-curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/purge_cache" \
+curl -X POST "https://api.cloudflare.com/client/v4/zones/36ccef1bc71583c52483121881f9a397/purge_cache" \
   -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
   --data '{"files":["https://pixels.handgemacht.ai/platform/new-thing.js"]}'
 ```
