@@ -42,10 +42,17 @@ export async function startAnimation(spec, stageEl) {
   ENV.gpu = senv.gpu;
   ENV.dpr = window.devicePixelRatio || 1;
 
+  // Where the mouse is on the stage, in stage pixels. The same live object for
+  // the whole life of the animation, exactly as the knobs are: the animation
+  // keeps the reference and reads it whenever it draws, and nothing is copied
+  // per step. `inside` is what it must actually test — the coordinates are only
+  // meaningful while a real pointer is over the stage.
+  var pointer = { x: width / 2, y: height / 2, inside: false };
+
   // The animation, then its backdrop, then its drawing paths — in that order,
   // because a backdrop is made once per stage size and both paths are given
   // the same one.
-  var scene = spec.create({ params: P, width: width, height: height });
+  var scene = spec.create({ params: P, width: width, height: height, pointer: pointer });
   var backdrop = scene.backdrop ? scene.backdrop() : null;
 
   var context = { params: P, scene: scene, surface: surface, width: width, height: height };
@@ -210,6 +217,9 @@ export async function startAnimation(spec, stageEl) {
     var drawnBy = chosen(wanted.backend || spec.poster.backend);
 
     posing = true;
+    // a poster is posed from a seeded run and nothing else, so whatever the
+    // mouse happened to be doing is not allowed into it
+    pointer.inside = false;
     if (drawnBy !== current) { current = drawnBy; showMode(); }
 
     scene.reset(spot || undefined);
@@ -247,6 +257,9 @@ export async function startAnimation(spec, stageEl) {
     var onStep = wanted.onStep || function () {};
 
     posing = true;
+    // the same for a film: every frame of it has to be the frame any other
+    // machine would have drawn
+    pointer.inside = false;
     if (drawnBy !== current) { current = drawnBy; showMode(); }
     scene.reset(spot || undefined);
 
@@ -290,6 +303,11 @@ export async function startAnimation(spec, stageEl) {
   function rebuild() {
     width = stageWidth();
     height = stageHeight();
+    // the old reading was in the old stage's pixels and may be off the new one
+    // altogether, so it goes back to where it started
+    pointer.x = width / 2;
+    pointer.y = height / 2;
+    pointer.inside = false;
     METRICS.view = width + " x " + height;
     shapeBox();
     if (scene.resize) scene.resize(width, height);
@@ -373,6 +391,7 @@ export async function startAnimation(spec, stageEl) {
     id: spec.id,
     title: spec.title,
     params: P,
+    pointer: pointer,
     defaults: params.defaults,
     knobs: spec.knobs,
     metrics: METRICS,
@@ -443,6 +462,11 @@ export async function startAnimation(spec, stageEl) {
       unfit();
       stageEl.style.aspectRatio = "";
       stageEl.removeEventListener("pointerdown", onPointer);
+      if (spec.stage.track) {
+        stageEl.removeEventListener("pointermove", onMove);
+        stageEl.removeEventListener("pointerleave", onLeave);
+        stageEl.removeEventListener("pointercancel", onLeave);
+      }
       live.forEach(function (entry) {
         if (entry.instance.dispose) entry.instance.dispose();
       });
@@ -457,7 +481,27 @@ export async function startAnimation(spec, stageEl) {
   current = chosen(spec.defaultBackend);
   showMode();
 
+  function onMove(event) {
+    // the clock is standing still while a poster or a film is being made, and a
+    // frame that moved with the mouse would not be the frame anyone else drew
+    if (posing) return;
+    var rect = stageEl.getBoundingClientRect();
+    pointer.x = (event.clientX - rect.left) / rect.width * width;
+    pointer.y = (event.clientY - rect.top) / rect.height * height;
+    // The button in the header strikes the stage by dispatching a pointerdown
+    // of its own, at a place it made up. That must aim nothing: a light that
+    // teleported to the middle of the stage every time the button was pressed
+    // would read as a fault, so only a pointer a person is holding counts as
+    // one being over the stage.
+    pointer.inside = event.isTrusted;
+  }
+
+  function onLeave() { pointer.inside = false; }
+
   function onPointer(event) {
+    // a tap aims before it strikes, so a click on the far side of the stage
+    // lands where it was pointed rather than where the mouse was last
+    onMove(event);
     var rect = stageEl.getBoundingClientRect();
     detonate({
       x: (event.clientX - rect.left) / rect.width * width,
@@ -465,6 +509,11 @@ export async function startAnimation(spec, stageEl) {
     });
   }
   stageEl.addEventListener("pointerdown", onPointer);
+  if (spec.stage.track) {
+    stageEl.addEventListener("pointermove", onMove);
+    stageEl.addEventListener("pointerleave", onLeave);
+    stageEl.addEventListener("pointercancel", onLeave);
+  }
 
   restart();
   window.requestAnimationFrame(tick);
