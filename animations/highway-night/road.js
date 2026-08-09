@@ -22,7 +22,7 @@
 import {
   VIEW_W, VIEW_H, S, Y_RAIL, Y_FAR, Y_MEDIAN, Y_NEAR, Y_SHOULDER, SPACING
 } from "./state.js";
-import { ROAD, LANE, EDGE, RAIL } from "./palette.js";
+import { ROAD, LANE, EDGE, RAIL, FARROAD } from "./palette.js";
 import { hash01 } from "./maths.js";
 import { latticeX, latticeCount, latticeCell, loopCells } from "./world.js";
 
@@ -37,7 +37,11 @@ function px(v) { return Math.max(1, Math.round(v * S)); }
 // not have a lamp aimed at them.
 export function paintGround(slab) {
   slab(EDGE, 0, Y_RAIL, VIEW_W, Y_FAR - Y_RAIL);
-  slab(ROAD, 0, Y_FAR, VIEW_W, Y_MEDIAN - Y_FAR);
+  // the oncoming carriageway is the same asphalt one band further off: the
+  // lamps reach it, but they reach it less well, and saying so with a ramp
+  // rather than with a colour is what separates the two carriageways without
+  // spending a thirtieth colour on the separation
+  slab(FARROAD, 0, Y_FAR, VIEW_W, Y_MEDIAN - Y_FAR);
   slab(EDGE, 0, Y_MEDIAN, VIEW_W, Y_NEAR - Y_MEDIAN);
   slab(ROAD, 0, Y_NEAR, VIEW_W, Y_SHOULDER - Y_NEAR);
   slab(EDGE, 0, Y_SHOULDER, VIEW_W, VIEW_H - Y_SHOULDER);
@@ -122,7 +126,10 @@ export function paintSpeckle(slab, step) {
     for (k = 0; k < 2; k++) {
       x = latticeX(j, spacing, step) - spacing + hash01(cell, k + 1, DUST_SEED) * spacing;
       y = Y_SHOULDER + 1 + hash01(cell, k + 3, DUST_SEED) * band;
-      slab(hash01(cell, k + 5, DUST_SEED) > 0.6 ? ROAD : RAIL, x, y, one, one);
+      // grit or gravel, never rail: a speck of guard-rail material on the
+      // shoulder stays ink until a lamp is almost on top of it, so two thirds
+      // of the speckle used to be invisible and the shoulder read as bare
+      slab(hash01(cell, k + 5, DUST_SEED) > 0.6 ? ROAD : EDGE, x, y, one, one);
     }
   }
 }

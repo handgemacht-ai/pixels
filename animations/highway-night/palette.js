@@ -11,7 +11,7 @@
 // The scene is lit from below and behind: sodium lamps, headlamps and tail
 // lamps are the only sources, so warmth means near and cold means far. The sky
 // runs cool, the road runs warm, and the four neon hues appear nowhere except
-// on the signs themselves and the single ring of halo around them — which is
+// on the signs themselves and the ring or two of halo around them — which is
 // what keeps a pink sign from reading as part of the road.
 // ---------------------------------------------------------------------
 export var C = {
@@ -33,9 +33,14 @@ export var C = {
   hot: 0xfff3d0,         // the middle of a lamp, and the top of the car ramp
 
   road: 0x16161f,        // asphalt with nothing on it
-  roadLit: 0x2b2830,     // the outer skirt of a pool
-  roadGlow: 0x4e4438,    // inside a pool
-  roadHot: 0x8a7346,     // directly under a lamp
+  // The three lit steps of the asphalt run cooler than sodium alone would
+  // make them. Wet tarmac under a lamp is not a warm surface: it is a cold
+  // surface with a warm light on it, and the sky it is also reflecting pulls
+  // every step back towards violet. Warmed the whole way up, the road read as
+  // sand rather than as road.
+  roadLit: 0x2a2833,     // the outer skirt of a pool
+  roadGlow: 0x494049,    // inside a pool
+  roadHot: 0x7d6d5e,     // directly under a lamp
   lane: 0x6d6a5c,        // paint in the dark
   laneLit: 0xe8dcae,     // paint under a lamp, which is what makes it read
 
@@ -77,6 +82,8 @@ export var POLE = 7;
 export var RAIL = 8;
 export var TRAFFIC = 9;    // the oncoming cars, small and never detailed
 export var TAILROAD = 10;  // road standing in a red pool rather than an amber one
+export var SHADOW = 11;    // road with something standing over it
+export var FARROAD = 12;   // the oncoming carriageway, which is the same road further off
 
 // Four levels each, darkest first. The resolve pass reads one of these with a
 // level between 0 and 3 worked out from how much light landed on the pixel, so
@@ -90,8 +97,21 @@ RAMP[LANE] = [C.lane, C.lane, C.laneLit, C.laneLit];
 RAMP[EDGE] = [C.ink, C.road, C.roadLit, C.roadGlow];
 RAMP[CAR] = [C.carDark, C.carBody, C.carLit, C.hot];
 RAMP[GLASS] = [C.ink, C.carGlass, C.carGlass, C.carLit];
-RAMP[WHEEL] = [C.ink, C.ink, C.carDark, C.carBody];
+RAMP[WHEEL] = [C.ink, C.carDark, C.carDark, C.carBody];
 RAMP[POLE] = [C.ink, C.carDark, C.carBody, C.carLit];
 RAMP[RAIL] = [C.ink, C.carDark, C.carBody, C.carBody];
 RAMP[TRAFFIC] = [C.carDark, C.carBody, C.carLit, C.carLit];
 RAMP[TAILROAD] = [C.road, C.tailFaint, C.tailFaint, C.tail];
+
+// Shade is not a darker colour laid over the road. It is the same road with a
+// rung taken off the bottom of its ladder and the top of it out of reach: it
+// starts where lit asphalt starts and never gets to the hot step, so a car
+// driving through a pool drags a patch that stays one band behind the road it
+// is on however bright that road becomes. Laying a grey over the asphalt
+// instead would have needed a thirtieth colour and would have gone flat the
+// moment a lamp passed overhead.
+RAMP[SHADOW] = [C.road, C.road, C.roadLit, C.roadGlow];
+// The far carriageway borrows it. Distance in a side elevation is which band a
+// thing is drawn in, and the cheapest true thing to say about the carriageway
+// eighty pixels away is that the same lamps reach it one step less well.
+RAMP[FARROAD] = RAMP[SHADOW];

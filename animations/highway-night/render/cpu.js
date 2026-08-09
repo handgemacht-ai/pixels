@@ -1,6 +1,6 @@
 "use strict";
 
-// The one drawing path, and the order it works in.
+// The assembled highway's drawing path, and the order it works in.
 //
 // A frame is not painted. It is built in four sweeps over two buffers the size
 // of the stage, and only the third of them knows anything about colour:
@@ -23,81 +23,33 @@
 // taking the brightest source is what makes two overlapping pools brighter
 // where they cross, which is the bright / dark / bright rhythm a line of
 // street lamps actually has.
+//
+// The buffers themselves, and the resolve that reads them, are in buffers.js:
+// the four solo stages build a frame the same way out of fewer parts, and the
+// only thing that differs between one stage's path and another's is the three
+// sweeps below.
 
-import { VIEW_W, VIEW_H, S, P, SPEED, LOOP, loopStep } from "../state.js";
-import { C, RAMP, AIR, ROAD, LANE, EDGE, TAILROAD } from "../palette.js";
-import { bayer4, vnoiseLoop } from "../maths.js";
-import {
-  allocateLight, clearLight, lux, ruby, addCone, addHaze, addBloom, bandLevel
-} from "../light.js";
+import { S, P } from "../state.js";
+import { C, AIR } from "../palette.js";
+import { bayer4 } from "../maths.js";
+import { clearLight, addCone, addHaze, addBloom } from "../light.js";
 import {
   paintGround, paintRail, paintMedian, paintDashes, paintEdgeLine, paintSpeckle
 } from "../road.js";
 import { poleCount, poleAt, paintPole } from "../pole.js";
 import { oncoming, paintTraffic, tailOf } from "../traffic.js";
 import { carPose, paintCar, lampAt } from "../car.js";
-import { litSigns, paintNeon, forgetSigns } from "../neon.js";
+import { litSigns, paintNeon } from "../neon.js";
 import {
   flareOf, poleCone, poleSpill, poleHaze, poleBloom, headCones, headBloom,
   tailCone, tailBloom
 } from "../lightcone.js";
+import { mat, put, slab, clearFrame, resolve, makeBackend } from "./buffers.js";
 
-// ------------------------- the drawing buffers -----------------------
-
-var mat;    // what each pixel is made of
-
-export var frame = document.createElement("canvas");
-var fctx, image;
-export var pixels;
-export var touched = 0;  // pixels written this step, for the stats strip
-
-// Called again whenever the stage resolution knob moves.
-export function allocate() {
-  mat = new Uint8Array(VIEW_W * VIEW_H);
-  allocateLight();
-  forgetSigns();
-  frame.width = VIEW_W;
-  frame.height = VIEW_H;
-  fctx = frame.getContext("2d");
-  image = fctx.createImageData(VIEW_W, VIEW_H);
-  pixels = image.data;
-}
-
-export function clearFrame() { pixels.fill(0); }
-export function resetTouched() { touched = 0; }
-
-// The finished buffer, handed to the canvas the texture is made from.
-export function blit() { fctx.putImageData(image, 0, 0); }
-
-// The only place in the animation where a float becomes a pixel. Everything
-// upstream stays fractional: a lattice rounded early would land one pixel out
-// on one side of the loop and the seam would pop.
-function put(x, y, colour) {
-  if (colour < 0) return;
-  x = Math.round(x);
-  y = Math.round(y);
-  if (x < 0 || y < 0 || x >= VIEW_W || y >= VIEW_H) return;
-  touched += 1;
-  var k = (y * VIEW_W + x) * 4;
-  pixels[k] = (colour >> 16) & 255;
-  pixels[k + 1] = (colour >> 8) & 255;
-  pixels[k + 2] = colour & 255;
-  pixels[k + 3] = 255;
-}
-
-// A rectangle of material. Clipped rather than wrapped, because every train on
-// the road is drawn with one member off each edge instead.
-function slab(id, x0, y0, w, h) {
-  var xa = Math.max(0, Math.round(x0));
-  var ya = Math.max(0, Math.round(y0));
-  var xb = Math.min(VIEW_W, Math.round(x0 + w));
-  var yb = Math.min(VIEW_H, Math.round(y0 + h));
-  var x, y, row;
-  for (y = ya; y < yb; y++) {
-    row = y * VIEW_W;
-    for (x = xa; x < xb; x++) mat[row + x] = id;
-  }
-}
+// How many of the largest sign housings get a cross flare. Three: a flare on
+// every sign is a sky full of stars, and none at all is a skyline of coloured
+// boxes.
+var FLARES = 3;
 
 // ------------------------- the material pass -------------------------
 //
@@ -124,7 +76,7 @@ function materials(scene, poles, cars, pose) {
   paintMedian(slab, step);
   for (i = 0; i < poles.length; i++) paintPole(slab, poles[i]);
   paintDashes(slab, step);
-  paintCar(slab, pose);
+  paintCar(slab, pose, step, true);
   paintEdgeLine(slab);
   paintSpeckle(slab, step);
 }
@@ -138,7 +90,7 @@ function materials(scene, poles, cars, pose) {
 
 function lights(scene, poles, cars, pose) {
   var state = scene.state;
-  var i, p, flare, cones, lamp, tail;
+  var i, p, c, flare, cones, lamp, tail;
 
   for (i = 0; i < poles.length; i++) {
     p = poles[i];
@@ -150,72 +102,24 @@ function lights(scene, poles, cars, pose) {
   }
 
   for (i = 0; i < cars.length; i++) {
-    tail = tailOf(cars[i]);
+    c = cars[i];
+    tail = tailOf(c);
     addBloom(tailBloom(tail.x, tail.y, 1));
     addCone(mat, tailCone(tail.x, tail.y, 1, 1));
+    // the far headlamp, seen end on rather than as a beam: a car coming the
+    // other way shows a white point and no wedge at all, because its beam is
+    // pointing away down its own carriageway
+    addBloom({ x: c.x - 1, y: tail.y, span: 2 * S, gain: 0.20, red: false });
   }
 
   lamp = lampAt(pose, true);
-  cones = headCones(pose, lamp, state.flash);
+  cones = headCones(lamp, state.flash);
   for (i = 0; i < cones.length; i++) addCone(mat, cones[i]);
   addBloom(headBloom(lamp, state.flash));
 
   lamp = lampAt(pose, false);
   addBloom(tailBloom(lamp.x, lamp.y, 1.2));
   addCone(mat, tailCone(lamp.x, lamp.y, -1, 1.2));
-}
-
-// ---------------------------- the resolve ----------------------------
-//
-// One pass, one decision per pixel: how much light landed here, which of the
-// four steps of this material's ramp that is, and what colour that is. Air
-// with no light in it resolves to nothing at all and lets the backdrop show
-// through, which is how the sky stays the sky.
-
-// How coarse the mottle in the asphalt is, in cells to a loop. Sixteen puts a
-// blotch about a quarter of a lamp spacing across, which is the size a patch
-// of older surfacing actually is, and — because it is exactly sixteen — the
-// grid comes back onto itself at the seam.
-var MOTTLE_CELLS = 16;
-var MOTTLE_SEED = 37;
-
-function resolve(step) {
-  var texture = P.coneTexture;
-  var warmth = Math.round(P.lampWarmth);
-  var cell = SPEED * LOOP / MOTTLE_CELLS;
-  var scroll = SPEED * loopStep(step);
-  var x, y, i, m, L, level, colour;
-  for (y = 0; y < VIEW_H; y++) {
-    for (x = 0; x < VIEW_W; x++) {
-      i = y * VIEW_W + x;
-      m = mat[i];
-      L = lux[i];
-      // asphalt is not a flat reflector: it is patched, polished by wheels in
-      // some places and coarse in others, and a pool laid over it comes out
-      // blotched rather than smooth. Without this the dither has nothing to
-      // work against over a wide flat band and resolves into a chequerboard,
-      // which reads as static rather than as a surface.
-      if (m === ROAD || m === EDGE || m === TAILROAD) {
-        L *= 0.76 + 0.48 * vnoiseLoop(x + scroll, y, cell, MOTTLE_CELLS, MOTTLE_SEED);
-      }
-      // more than half the light here was red, so this is asphalt standing in
-      // a tail lamp rather than under a street lamp, and it brightens towards
-      // ruby instead of towards amber
-      if (m === ROAD && ruby[i] > 0.5 * L) m = TAILROAD;
-      level = bandLevel(L, x, y, texture);
-      // the warmth knob is a band offset, and it is allowed on the road and
-      // the paint only: shifting the whole picture would just be a brightness
-      // slider, whereas shifting the ground alone is the difference between
-      // sodium and the white lamps that replaced it
-      if (m === ROAD || m === LANE || m === TAILROAD) {
-        level += warmth;
-        if (level < 0) level = 0;
-        else if (level > 3) level = 3;
-      }
-      colour = RAMP[m][level];
-      if (colour >= 0) put(x, y, colour);
-    }
-  }
 }
 
 // ---------------------------- the emitters ---------------------------
@@ -227,7 +131,7 @@ function resolve(step) {
 function emitters(scene, poles, cars, pose) {
   var state = scene.state;
   var trail = Math.round(P.trail * S);
-  var i, k, p, tail, lamp, colour;
+  var i, k, p, c, tail, lamp, colour;
 
   // the filament under each cobra head
   for (i = 0; i < poles.length; i++) {
@@ -236,19 +140,24 @@ function emitters(scene, poles, cars, pose) {
   }
 
   // the oncoming cars: a red lamp on the back, the streak it drags out behind
-  // it, and one pixel of its own headlamp spilling off the front
+  // it, and the two white pixels of its own headlamps coming the other way
   for (i = 0; i < cars.length; i++) {
-    tail = tailOf(cars[i]);
+    c = cars[i];
+    tail = tailOf(c);
     put(tail.x - 1, tail.y, C.tail);
     put(tail.x - 1, tail.y - 1, C.tail);
     for (k = 0; k < trail; k++) {
       // the streak thins as it goes, carried by the dither rather than by a
       // colour between the two reds, because there is no such colour
-      colour = k < 2 ? C.tail : C.tailFaint;
+      colour = k < 1 ? C.tail : C.tailFaint;
       if (k >= 2 && bayer4(tail.x + k, tail.y) > 1 - k / trail) continue;
       put(tail.x + k, tail.y, colour);
     }
-    put(cars[i].x - 1, tail.y, C.beam);
+    // a headlamp seen head on is the brightest thing in the picture, not a
+    // patch of lit air: two pixels of white, where a wedge of beam colour used
+    // to sit and read as a smear
+    put(c.x - 1, tail.y, C.hot);
+    put(c.x - 1, tail.y - 1, C.hot);
   }
 
   // the hero car's own lamps, which sit on the shell and ride with it
@@ -261,7 +170,7 @@ function emitters(scene, poles, cars, pose) {
   put(lamp.x + S, lamp.y, C.tail);
   put(lamp.x + S, lamp.y + S, C.tail);
 
-  paintNeon(put, litSigns(state));
+  paintNeon(put, litSigns(state, 0, FLARES));
 }
 
 export function drawFrame(scene) {
@@ -279,47 +188,10 @@ export function drawFrame(scene) {
 
   materials(scene, poles, cars, pose);
   lights(scene, poles, cars, pose);
-  resolve(step);
+  resolve(step, P.coneTexture, Math.round(P.lampWarmth), true);
   emitters(scene, poles, cars, pose);
 }
 
-// ------------------------- the registered backend --------------------
-// This path has no canvas of its own: it fills a buffer and hands it to the
-// pixel surface the platform offers, which is what blows it up on screen.
-
 export function createJavascriptBackend(ctx) {
-  var surface = ctx.surface;
-  var scene = ctx.scene;
-  var count = { pixels: 0 };
-
-  allocate();
-  surface.setFrame(frame);
-
-  return {
-    canvas: surface.canvas,
-
-    setBackdrop: function (canvas) { surface.setBackdrop(canvas); },
-
-    resize: function (width, height) {
-      allocate();
-      surface.resize(width, height);
-      surface.setFrame(frame);
-    },
-
-    draw: function () {
-      resetTouched();
-      drawFrame(scene);
-    },
-
-    upload: function () {
-      blit();
-      surface.refresh();
-    },
-
-    present: function (dx, dy) { surface.present(dx, dy); },
-
-    readFrame: function () { return new Uint8Array(pixels); },
-
-    stats: function () { count.pixels = touched; return count; }
-  };
+  return makeBackend(ctx, drawFrame);
 }
