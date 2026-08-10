@@ -115,6 +115,7 @@ masts.js          the lamp line, on a lattice measured in metres ahead
 roadside.js       the sign gantries and the delineator posts, on two more lattices
 chase.js          the car ahead, fixed in z and therefore fixed on the screen
 approach.js       oncoming traffic as headlamps and exposure, with no bodywork
+lead.js           the lane to the right as tail lamps, on a lattice slower than the scroll
 groundlight.js    pools measured on the road plane, and the light behind the camera
 render/deep.js    the shot down the road: the same four sweeps, sorted in depth
 
@@ -217,11 +218,14 @@ spacings to a loop. Every hash is taken on a cell index counted modulo the cells
 as across the stage, so the mast arriving at the horizon carries what the mast that has just swept
 past the camera was carrying.
 
-The road markings hang on halvings of the same lattice: the dashes on a quarter of the spacing,
-which is sixteen cells to a loop, and the two rows of oncoming traffic at three quarters and five
-quarters over the camera's own speed, which is seven and nine cells. Whole numbers in every case —
-a row that covered a fraction of its own spacing in a loop would not come back onto itself, and the
-seam would show as a car appearing out of nothing.
+Everything else hangs on multiples and halvings of the same lattice, and every one of them comes
+out whole. The dashes run on a quarter of the spacing, which is sixteen cells to a loop; the
+delineator posts on a half, which is eight; the sign gantries on two spacings, which is two. The
+three rows of oncoming traffic close on the camera at a half, three quarters and five quarters over
+its own speed, which is six, seven and nine cells; the lane going the same way closes at one
+spacing under it, which is three. Whole numbers in every case — a train that covered a fraction of
+its own spacing in a loop would not come back onto itself, and the seam would show as a car
+appearing out of nothing.
 
 ## What streaks and what does not
 
@@ -244,7 +248,12 @@ striking the road flashes the brake lamps and pushes the red further down the ta
 does not move at all. A car ahead that surged would get smaller, and at this scale a tenth of a
 metre is a pixel appearing on one side of it and not the other.
 
-The road between the two streaks and does so quietly: the lane dashes, the barrier and the paint
+The lane to the right streaks a little. A car in it is going the same way as the camera, so what
+the shutter records is only the difference between the two speeds — a trail a quarter the length of
+an oncoming one at the same distance, in the fainter of the two reds. It is the same construction
+as the oncoming trail and the difference between them is a subtraction rather than a decision.
+
+The road between them streaks and does so quietly: the lane dashes, the barrier and the paint
 are all fixed to the world rather than to the camera, so they run past at the camera's own speed
 and the pools of the lamps run with them.
 
@@ -255,7 +264,7 @@ A frame is built in four sweeps over two buffers the size of the stage.
 The **material pass** writes what every pixel is made of — asphalt, paint, gravel, glass, sheet
 metal, air — back to front, and never a colour. The **light pass** adds up how much light lands on
 every pixel from every source at once. The **resolve** turns each pixel into a colour by reading
-its own material's four-step ramp at a level worked out from the light that landed on it. The
+its own material's ramp at a level worked out from the light that landed on it. The
 **emitters** go down last, straight to the frame: neon, filaments, tail lamps and the red they drag
 are making light rather than receiving it, and putting them back through the ramps would lay a
 street lamp's amber over a pink sign.
@@ -314,8 +323,9 @@ how big.
 - **light** — how far a cone carries, how wide it opens, how much haze hangs in it, how a value
   between two ramp steps is carried, and a warmth offset that shifts the road and its paint along
   their ramps without touching anything else on the stage.
-- **traffic** — how many oncoming cars are on the far carriageway, and how long a tail-light trail
-  is drawn behind each of them.
+- **traffic** — how much traffic is running: three rows of it on the far carriageway and a third as
+  much again in the lane to the right going the same way, plus how long a trail is drawn behind
+  each of them.
 - **neon** — how many of the sign housings are lit, how far up their ramp they burn, and how much
   they flicker.
 - **car** — how far the headlight beams reach and how wide they open. The car itself has nothing
@@ -331,14 +341,14 @@ metres there rather than pixels, because a mast in that picture is a different n
 every distance. And the trail knob becomes an exposure in steps, because what is drawn is not a
 length but a number of earlier positions.
 
-Two knobs the elevation offers are absent. Cone spread has nothing to open: a cone seen end on has
+One knob the elevation offers is absent. Cone spread has nothing to open: a cone seen end on has
 no width to argue about, and what the lamp lays is a pool on the ground rather than a wedge across
-the picture. Patched asphalt is off, because the patch grid is scrolled sideways by a
-pixels-per-step that only an elevation has, and a fixed grid laid over a road that recedes is a
-texture standing still on a moving surface.
+the picture. Patched asphalt is not absent but it is not the elevation's either — the grid is
+sampled where a pixel is on the road rather than where it is on the screen, so a patch keeps its
+size in metres and foreshortens with everything else, and it scrolls at the speed the road does.
 
 Four knobs take hold at the top of the next loop rather than at once: lamp spacing, steps per lamp,
-the number of oncoming cars and the number of lit signs. All four re-cut a lattice, and a lattice
+the amount of traffic and the number of lit signs. All four re-cut a lattice, and a lattice
 re-cut halfway through a loop leaves the scroll out of step with itself and tears the seam open.
 Everything else applies immediately.
 
