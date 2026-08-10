@@ -16,6 +16,7 @@ import { initStats } from "./ui/stats.js";
 import { initSidebar } from "./ui/sidebar.js";
 import { initFilm } from "./ui/film.js";
 import { initTaps } from "./ui/taps.js";
+import { initPlayer } from "./ui/player.js";
 
 var stageEl = document.getElementById("stage");
 var errorEl = document.getElementById("error");
@@ -55,6 +56,7 @@ async function mount(spec) {
   put(initSheet(spec, api));
   put(linkShell(spec, api));
   put(initControls(spec, api));
+  put(initPlayer(spec, api));
   put(initStats(spec, api));
   put(initTaps(spec, api));
   put(initFilm(spec, api));
