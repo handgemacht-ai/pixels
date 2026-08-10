@@ -29,14 +29,26 @@ var JOIN = 11;
 var STOPS = [0, 0.40, 0.74];
 
 // The layer of dirty air the city is lit through: how deep it is, where its
-// middle stands, how far it reaches, and how much of it is left out past that.
-// The depth is a fraction of the width and not of the horizon, because it is a
-// thing in the world — so many metres of air — and the horizon moves with the
-// shape of the stage while the road, and therefore the scale, does not.
+// middle stands, how far it reaches, how much light is in it, and how far the
+// whole of it is pushed down towards the horizon out past the city. The depth
+// is a fraction of the width and not of the horizon, because it is a thing in
+// the world — so many metres of air — and the horizon moves with the shape of
+// the stage while the road, and therefore the scale, does not.
+//
+// The last two are what carry the temperature, and they are what the hump used
+// to do between them. Scaling the layer's brightness by the hump meant the
+// right third of the frame, where the hump has all but run out, never climbed
+// past the first step: violet-grey from the horizon all the way up, on the side
+// of the picture the road is on. Air over a lit city is sodium at the horizon
+// wherever it is looked at; what the city decides is how far up that reaches.
+// So the ramp is the same one in every column and the hump slides it — sitting
+// whole over the towers, and five rows lower out past them, where only the
+// rows nearest the horizon are still inside it.
 var HAZE_DEPTH = 0.125;
 var HAZE_AT = 0.34;
 var HAZE_HALF = 0.78;
-var HAZE_FLOOR = 0.38;
+var HAZE_GAIN = 9;
+var HAZE_LIFT = 5;
 
 // What of the static half a stage wants. The first three default to on, so the
 // assembled highway asks for nothing and gets everything; a stage whose
@@ -69,7 +81,7 @@ export function makeBackdrop(options) {
     ctx.fillRect(x, y, w, h);
   }
 
-  var x, y, i, d, hump, band, next, into, s, f, amp, up, v, level;
+  var x, y, i, d, hump, band, next, into, s, f, drop, up, v, level;
 
   // ---------------------------- the sky --------------------------------
   // Three tones, and eleven rows of ordered dither where each pair of them
@@ -123,11 +135,11 @@ export function makeBackdrop(options) {
   // light is coming from, violet a few rows up where it has scattered, and the
   // last of the glow at the top of it where it gives out into the sky.
   //
-  // Its depth is fixed and its brightness is what varies across the frame, not
-  // the other way about, because air does not stop at the edge of a city. The
-  // hump therefore rides on a floor rather than falling to nothing, and the
-  // right third of the sky — which the old hump did not reach at all — is no
-  // longer a flat column of the tone underneath it.
+  // Its temperature is fixed and its depth is what varies across the frame,
+  // not the other way about, because air does not stop at the edge of a city
+  // and it does not go cold at the edge of one either. Every column climbs the
+  // same three steps towards the horizon; out past the towers it starts them
+  // lower down and so only gets through the warm end of them.
   //
   // It goes down before the skyline and not after, which was tried and is
   // wrong. Laid over the towers the layer dissolves them: its brightest rows
@@ -145,14 +157,17 @@ export function makeBackdrop(options) {
   var rows = Math.round(HAZE_DEPTH * VIEW_W);
   var cx = HAZE_AT * VIEW_W;
   var half = HAZE_HALF * VIEW_W;
+  var lift = HAZE_LIFT * S / rows;
   if (wantGlow) {
     for (x = 0; x < VIEW_W; x++) {
       d = (x - cx) / half;
       hump = (d <= -1 || d >= 1) ? 0 : 0.5 * (1 + Math.cos(d * Math.PI));
-      amp = HAZE_FLOOR + (1 - HAZE_FLOOR) * hump;
+      drop = lift * (1 - hump);
       for (y = Math.max(0, HORIZON - rows); y < HORIZON; y++) {
-        up = 1 - (HORIZON - y) / rows;
-        v = amp * 3 * up * up;
+        // how far into this column's layer the row is: nothing at its top,
+        // all of it at the horizon, and the top is what the hump moves
+        up = 1 - (HORIZON - y) / rows - drop;
+        v = up <= 0 ? 0 : HAZE_GAIN * up * up;
         level = Math.floor(v);
         if (v - level > bayer4(x, y)) level += 1;
         if (level > 3) level = 3;
