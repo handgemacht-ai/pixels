@@ -20,9 +20,15 @@
 //
 // The lattice is this module's own, as it is in the elevation, and for the
 // same reason: these cars do not travel at the scroll speed but at the scroll
-// plus their own. Three quarters over and five quarters over, so a row covers
-// seven and nine of its own spacings in a loop — both whole, so both rows come
-// back onto themselves at the seam.
+// plus their own. A half over, three quarters over and five quarters over, so a
+// row covers six, seven or nine of its own spacings in a loop — all whole, so
+// every row comes back onto itself at the seam.
+//
+// Three rows and two lanes. The outer lane carries two of them at different
+// speeds, which is the only way a lane of traffic reads as traffic rather than
+// as a train: two cars in the same lane closing on the camera at different
+// rates draw apart while you watch them, and one of them overtakes the other
+// somewhere off the top of the frame.
 
 import { P, VIEW_W, S, HORIZON, loopStep } from "./state.js";
 import { C } from "./palette.js";
@@ -32,6 +38,7 @@ import { U } from "./carriageway.js";
 
 // The two lanes of the far carriageway, on their middles.
 var ROWS = [
+  { over: 2, u: (U.farOut + U.farMid) / 2, seed: 107 },
   { over: 3, u: (U.farOut + U.farMid) / 2, seed: 61 },
   { over: 5, u: (U.farMid + U.farIn) / 2, seed: 83 }
 ];

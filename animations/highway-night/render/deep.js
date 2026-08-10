@@ -32,6 +32,7 @@ import { paintCarriageway } from "../carriageway.js";
 import { masts, paintMast, mastFlare } from "../masts.js";
 import { gantries, paintGantry, posts, paintPost } from "../roadside.js";
 import { oncoming, approachBlooms, paintApproach } from "../approach.js";
+import { leading, leadBlooms, paintLead } from "../lead.js";
 import {
   heroBox, brakeZ, paintHero, paintTailLamps, tailBlooms
 } from "../chase.js";
@@ -77,7 +78,7 @@ function materials(step, poles, arches, studs, box) {
 // squashed to a couple of rows — is something that happens rather than
 // something that had to be worked out.
 
-function lights(state, poles, cars, box, pairs) {
+function lights(state, poles, cars, ahead, box, pairs) {
   var i, p, flare, blooms;
 
   addCityFloor(mat);
@@ -96,6 +97,11 @@ function lights(state, poles, cars, box, pairs) {
   blooms = approachBlooms(cars);
   for (i = 0; i < blooms.length; i++) addBloom(blooms[i], mat);
 
+  // the lane to the right, and no pool under it: see lead.js for why a tail
+  // lamp in front of the camera has nothing left to light
+  blooms = leadBlooms(ahead);
+  for (i = 0; i < blooms.length; i++) addBloom(blooms[i], mat);
+
   // the red on the road behind the car, which is the only light in the picture
   // travelling towards the eye rather than away from it
   addPool(mat, brakePool(brakeZ(box), state.flash, box.contactY));
@@ -106,7 +112,7 @@ function lights(state, poles, cars, box, pairs) {
 
 // ---------------------------- the emitters ---------------------------
 
-function emitters(state, poles, arches, studs, cars, box) {
+function emitters(state, poles, arches, studs, cars, ahead, box) {
   var i, k, p, lights, turn, since;
 
   // the beacons first, because they are the furthest thing on the stage and
@@ -138,6 +144,7 @@ function emitters(state, poles, arches, studs, cars, box) {
   }
 
   paintApproach(put, cars, P.exposure);
+  paintLead(put, ahead, P.exposure);
   paintTailLamps(put, box, state.flash);
   paintNeon(put, litSigns(state, 0, FLARES));
 }
@@ -149,6 +156,7 @@ export function drawFrame(scene) {
   var arches = gantries(step);
   var studs = posts(step);
   var cars = oncoming(step);
+  var ahead = leading(step);
   var box = heroBox();
   var pairs = 0;
   var i;
@@ -164,7 +172,7 @@ export function drawFrame(scene) {
   clearLight();
 
   materials(step, poles, arches, studs, box);
-  lights(state, poles, cars, box, pairs);
+  lights(state, poles, cars, ahead, box, pairs);
   // the mottle is on and it is taken in metres: a patch of older surfacing is a
   // patch of the road, so it is sampled where the pixel is on the road rather
   // than where it is on the screen, and it scrolls because the road does
@@ -173,7 +181,7 @@ export function drawFrame(scene) {
   // clean contour between two saturated ramps is the one join in this picture
   // the eye can catch
   resolve(step, P.coneTexture, Math.round(P.lampWarmth), true, true, true);
-  emitters(state, poles, arches, studs, cars, box);
+  emitters(state, poles, arches, studs, cars, ahead, box);
 }
 
 export function createJavascriptBackend(ctx) {

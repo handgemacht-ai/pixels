@@ -14,6 +14,7 @@ import { clamp, frac } from "./maths.js";
 import { layCamera } from "./camera.js";
 import { masts, mastHit } from "./masts.js";
 import { onStage, latchApproach } from "./approach.js";
+import { onLead } from "./lead.js";
 import { latchSigns, darkSignNear } from "./neon.js";
 import {
   fade, SIGN_CELLS, FLASH_STEPS, WAKE_STEPS,
@@ -66,7 +67,7 @@ function createHighway() {
 
   function recount() {
     count.kmh = Math.round(kmh());
-    count.cars = onStage(state.step);
+    count.cars = onStage(state.step) + onLead(state.step);
     // heads in shot, both shoulders counted, which is what a driver sees
     // rather than how many the lattice is holding
     count.lamps = masts(state.step).length;
@@ -257,7 +258,11 @@ export default defineAnimation({
     { group: "light", key: "lampWarmth", label: "lamp warmth", default: 0,
       min: -2, max: 2, step: 1, unit: "bands", applies: "live" },
 
-    { group: "traffic", key: "density", label: "oncoming cars", default: 4,
+    // Six, where it was four. Three rows are running on the far carriageway
+    // now instead of two and a third of the number is going the same way as the
+    // camera, so the same setting spreads further and the road came out emptier
+    // than it was before the rows were added.
+    { group: "traffic", key: "density", label: "traffic", default: 6,
       min: 0, max: 8, step: 1, applies: "next" },
     // The elevation's trail knob, said the way this picture means it: not a
     // length in pixels but how long the shutter was open, because the streak
@@ -346,6 +351,8 @@ export default defineAnimation({
       meta: "fixed in z, so fixed on the screen · nothing here reads the step" },
     { path: "approach.js", sub: "oncoming traffic, as light only",
       meta: "headlamp pairs and the exposure behind them · no bodywork is drawn" },
+    { path: "lead.js", sub: "the lane to the right, going the same way",
+      meta: "tail lamps and a short trail · the one traffic here that throws no pool" },
     { path: "groundlight.js", sub: "pools on the road plane",
       meta: "measured in metres, projected after · foreshortening is not calculated" },
     { path: "state.js", sub: "the stage and the world constants",
