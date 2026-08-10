@@ -112,6 +112,7 @@ render/side.js    the elevation's path: material pass, light pass, resolve, emit
 camera.js         the projection: one horizon, one vanishing column, row to metres
 carriageway.js    the road down its length, a cross-section projected row by row
 masts.js          the lamp line, on a lattice measured in metres ahead
+roadside.js       the sign gantries and the delineator posts, on two more lattices
 chase.js          the car ahead, fixed in z and therefore fixed on the screen
 approach.js       oncoming traffic as headlamps and exposure, with no bodywork
 groundlight.js    pools measured on the road plane, and the light behind the camera

@@ -53,6 +53,15 @@ export var U = {
 // picture that says the two carriageways are at the same height.
 var BARRIER_H = 0.9;
 
+// And how tall the guard rail on the near shoulder stands. Eight tenths of a
+// metre is a steel beam rather than a concrete profile, and it runs where the
+// masts do — from the outer edge of the shoulder to the verge — because that is
+// where a rail goes and because the two lines then leave the road held between
+// them. Without it the near side of the picture simply stopped: the shoulder
+// ran out into the same dark as the sky and the eye had nothing on the right to
+// follow to the vanishing point, which is half of why the frame read as empty.
+var SHOULDER_H = 0.8;
+
 // Half the width of a painted line, in metres. Road markings are about a fifth
 // of a metre across, which past the first few rows is less than a pixel — so
 // paint is the one thing here drawn with a floor under its width. A line that
@@ -142,6 +151,16 @@ export function paintCarriageway(slab, step) {
     top = y - BARRIER_H * m;
     a = Math.round(xOf(U.barrierOut, d));
     b = Math.round(xOf(U.barrierIn, d));
+    if (b <= a) b = a + 1;
+    slab(RAIL, a, top, b - a, y - top + 1);
+
+    // the same wall again on the other side, and drawn the same way. It is
+    // stacked after the median rather than with it because it is nearer the
+    // camera in every row they share, and a row painting its own slice last is
+    // what keeps that true without anybody sorting anything.
+    top = y - SHOULDER_H * m;
+    a = Math.round(xOf(U.rightMast, d));
+    b = Math.round(xOf(U.verge, d));
     if (b <= a) b = a + 1;
     slab(RAIL, a, top, b - a, y - top + 1);
   }
