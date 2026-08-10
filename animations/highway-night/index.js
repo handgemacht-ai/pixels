@@ -265,15 +265,15 @@ export default defineAnimation({
     { group: "traffic", key: "exposure", label: "exposure", default: 8,
       min: 0, max: 20, step: 1, unit: "steps", applies: "live" },
 
-    // Six of the twenty-four, where the elevation lights eighteen. The two
+    // Nine of the twenty-four, where the elevation lights eighteen. The two
     // pictures want different amounts of the same city: from the side the
     // skyline is a strip along the top and a sign every few pixels is what
     // fills it, whereas down the road the sky is half the frame and every lit
-    // sign in it is competing with the vanishing point for the eye. The plate
-    // settles it — one big sign, a handful of small ones, and a great deal of
-    // dark city — and the knob still goes to twenty-four for anyone who wants
-    // the carnival.
-    { group: "neon", key: "signs", label: "signs lit", default: 6,
+    // sign in it is competing with the vanishing point for the eye. Six left
+    // the near block reading as a dark bar with a lamp on it; nine puts a sign
+    // in most of the gaps between the towers while still leaving more housings
+    // dark than lit, and the knob goes to twenty-four for the carnival.
+    { group: "neon", key: "signs", label: "signs lit", default: 9,
       min: 0, max: 24, step: 1, applies: "next" },
     { group: "neon", key: "neonIntensity", label: "neon", default: 2,
       min: 0, max: 3, step: 1, unit: "bands", applies: "live" },
