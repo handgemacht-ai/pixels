@@ -40,7 +40,7 @@ export function paintGround(slab) {
   // the oncoming carriageway is the same asphalt one band further off: the
   // lamps reach it, but they reach it less well, and saying so with a ramp
   // rather than with a colour is what separates the two carriageways without
-  // spending a thirtieth colour on the separation
+  // spending a forty-first colour on the separation
   slab(FARROAD, 0, Y_FAR, VIEW_W, Y_MEDIAN - Y_FAR);
   slab(EDGE, 0, Y_MEDIAN, VIEW_W, Y_NEAR - Y_MEDIAN);
   slab(ROAD, 0, Y_NEAR, VIEW_W, Y_SHOULDER - Y_NEAR);
