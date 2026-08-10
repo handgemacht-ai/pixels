@@ -50,11 +50,12 @@ platform/api.js         the registration API: defineAnimation(), knob()
 platform/runtime.js     the clock, the drawing-path switch, stage rebuilds
 platform/params.js      the live knob values, built from the declarations
 platform/surface.js     the PixiJS pixel surface offered to drawing paths
+platform/seed.js        the seeded random source a run that has to repeat draws on
 platform/metrics.js     the numbers a page can actually measure
 platform/gif.js         a GIF89a writer, used by the page and by the tools
 platform/export.js      films the animation as it stands and hands over the file
 platform/light/         material and height in, lit pixels out — for animations that want it
-platform/ui/            switcher, controls, stats strip, file browser, sheet player, furniture
+platform/ui/            switcher, controls, frame player, stats strip, file browser, sheet player, furniture
 platform/ui/taps.js     the pipeline panel: an animation's stages, drawn as the graph they form
 platform/ui/buffers.js  one painter per kind of buffer — no DOM, no scene, and it only ever reads
 animations/index.js     the registry
@@ -81,6 +82,37 @@ about either animation is written into the switcher; it shows what it was handed
 1120 px of width the rail lies down above the stage and scrolls sideways.
 
 `?animation=<id>` also works on its own, typed or linked; without it the first animation is used.
+
+## Walking a run a frame at a time
+
+Under the stage is a player: pause, one step back, one step on, and the step that is on the stage —
+`step 7 / 48`, where the second number is how long a whole run is, the same length the GIF button
+films. The space bar holds the run and lets it go again, the left and right arrows walk it, and each
+button names its key. The keys do nothing while something is being typed into, so the arrows still
+nudge whichever control has the focus.
+
+Holding a run takes it off the clock and starts it again from the top, on the seeded run the film is
+made from: the frame the player holds at step n is the frame the GIF holds at step n, and one press
+is one frame of it. Nothing is carried while it is held — the clock is not paid back in a burst of
+steps when it takes the run on again, and no automatic replay lands in the middle of a walk.
+
+An animation is only ever asked to go forwards, so there is nothing there to ask for a step back. A
+step back is the run made again from its start to the step before, which lands on the same frame for
+the same reason a filmed run is the same file twice running: the same seed, the same strikes and the
+same number of steps. Making a forty-eight-step run again costs forty-eight steps, which at these
+sizes is a few tens of milliseconds; a step forward costs one.
+
+The stage still takes a strike while the run is held. It lands on the frame on screen and is written
+down at that step, so walking back past it and forward again shows it land again; a strike given
+further back drops the ones ahead of it, because the run has taken a different turning. Moving a
+knob walks the run again to the same step, so what is on the stage is the frame that step now has —
+which is also how a knob that only takes hold on the next run takes hold on a walk. The player stays
+as it was left when the animation is switched, and the next one comes up held at the top of its own
+run. An animation that follows the mouse stops following it while the run is held, for the same
+reason a filmed frame does not follow it.
+
+`window.pixels.player` is the same thing without the buttons: `hold()`, `release()`, `step(±1)`,
+`seek(n)`, `at()`, `held()` and `length()`.
 
 ## Run it locally
 
