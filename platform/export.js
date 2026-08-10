@@ -7,6 +7,7 @@
 // uses. Nothing is fetched and nothing is uploaded.
 
 import { encodeGif, delaysForRate, magnify } from "./gif.js";
+import { FILM_SEED, seededRandom } from "./seed.js";
 
 // A film wider than this is not more useful, only larger. The magnification is
 // a whole number, so a 160-pixel stage becomes 640 and a 320-pixel one 640 too.
@@ -37,19 +38,6 @@ function paletteOf(spec) {
     var rgb = spec.palette.colours[name];
     return { name: name, rgb: [(rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255] };
   });
-}
-
-// The same run twice running gives the same file: the capture borrows the
-// random source for as long as it lasts and hands it back afterwards.
-function seededRandom(seed) {
-  var state = seed >>> 0;
-  return function () {
-    state = (state + 0x6D2B79F5) >>> 0;
-    var t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 // Films the animation as it stands and hands back a GIF.
@@ -112,8 +100,10 @@ export async function exportGif(spec, api, onStep, override) {
     frames.push(pixels);
   }
 
+  // the same run twice running gives the same file: the capture borrows the
+  // random source for as long as it lasts and hands it back afterwards
   var real = Math.random;
-  Math.random = seededRandom(0x5f3a91c7);
+  Math.random = seededRandom(FILM_SEED);
   var shot;
   try {
     shot = await api.record({

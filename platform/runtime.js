@@ -9,6 +9,7 @@
 import { readBinding } from "./api.js";
 import { createParams } from "./params.js";
 import { createSurface } from "./surface.js";
+import { FILM_SEED, seededRandom } from "./seed.js";
 import { initFit } from "./ui/fit.js";
 import { METRICS, ENV, clock, ring, push, clear, summarise } from "./metrics.js";
 
@@ -121,6 +122,12 @@ export async function startAnimation(spec, stageEl) {
   var posing = false;
   var running = true;
   var ZERO = { x: 0, y: 0 };
+  // Where the run has got to. `stood` is the state the animation is in, `shown`
+  // the state the stage is showing: a step draws the state the run stands in
+  // and then steps it on, so while the clock is running the stage is one state
+  // behind the animation. Closing that gap is what holding a run amounts to.
+  var stood = 0;
+  var shown = -1;
 
   function advance() {
     var back = current.instance;
@@ -130,6 +137,9 @@ export async function startAnimation(spec, stageEl) {
     var t1 = clock();
     if (back.upload) back.upload();
     var t2 = clock();
+
+    shown = stood;
+    stood += 1;
 
     push(steps, t1 - t0, t2);
     if (back.upload) push(uploads, t2 - t1, t2);
@@ -143,11 +153,17 @@ export async function startAnimation(spec, stageEl) {
     shakeX = offset.x;
     shakeY = offset.y;
 
-    if (pendingGrab) {
-      var grab = pendingGrab;
-      pendingGrab = null;
-      grab(back.readFrame(), width, height, current.id);
-    }
+    offerFrame();
+  }
+
+  // What has just been drawn, to whoever asked for the next frame. Both the
+  // clock and the player go through here, so a run can be read a step at a time
+  // from outside however it is being stepped.
+  function offerFrame() {
+    if (!pendingGrab) return;
+    var grab = pendingGrab;
+    pendingGrab = null;
+    grab(current.instance.readFrame(), width, height, current.id);
   }
 
   // Whatever a panel asked a drawing path to capture is dropped the moment the
@@ -170,12 +186,25 @@ export async function startAnimation(spec, stageEl) {
     scene.detonate(spot || undefined);
     sinceRun = 0;
     announce();
+    // A strike given to a held run lands on the frame that is on the stage, so
+    // that frame is drawn again with it in. It is written down at the step it
+    // landed on as well, because a walk that cannot put it back would not reach
+    // the same frame twice.
+    if (held) {
+      // a strike given halfway back through a walk is the run taking a
+      // different turning, so the strikes further on are no longer part of it
+      while (strikes.length && strikes[strikes.length - 1].step > mark) strikes.pop();
+      strikes.push({ step: mark, spot: spot || null });
+      holdFrame();
+    }
   }
 
   // A clean start: used at boot, after a resize, and after a change of
   // drawing path, so what is on screen is never the other path's leftovers.
   function restart() {
     scene.reset();
+    stood = 0;
+    shown = -1;
     sinceRun = 0;
     announce();
   }
@@ -216,6 +245,9 @@ export async function startAnimation(spec, stageEl) {
     carried = 0;
     restart();
     advance();
+    // posing walked the run somewhere else entirely; a player holding it wants
+    // its own step back
+    if (held) stale = true;
     posing = false;
   }
 
@@ -310,6 +342,118 @@ export async function startAnimation(spec, stageEl) {
     return Math.max(1, Math.round(readBinding(film.steps, P) * film.cycles));
   }
 
+  // ------------------------ a run walked by hand ----------------------
+  // The player under the stage. While it holds the run the clock does not step
+  // it: what moves the run on is a press, and one press is one step, taken the
+  // way a film takes it — the state the run stands in is drawn, then stepped
+  // on, then the next is drawn — so the frame the player holds at step n is the
+  // frame the film holds at step n.
+  //
+  // An animation is only ever asked to go forwards, so there is nothing here to
+  // ask for a step back. A step back is the run walked again from its start to
+  // the step before, which lands on the same frame for the same reason a filmed
+  // run is the same file twice running: the same seed, the same strikes and the
+  // same number of steps.
+
+  var held = false;
+  var mark = 0;
+  var strikes = [];
+  var stale = false;
+  var lent = null;
+
+  // A walk only comes out the same twice if the numbers it draws on are the
+  // same numbers. The generators open the page with its random source already
+  // seeded and leave a way to put it back to the start; that is the source the
+  // committed films were made from, so a walk uses it wherever it is there. On
+  // any other page the walk borrows the source and seeds it exactly as the GIF
+  // button does, and hands it back when the clock takes the run again.
+  function seedWalk() {
+    if (typeof window.__reseed === "function") { window.__reseed(); return; }
+    if (!lent) lent = Math.random;
+    Math.random = seededRandom(FILM_SEED);
+  }
+
+  function giveSourceBack() {
+    if (!lent) return;
+    Math.random = lent;
+    lent = null;
+  }
+
+  // Draw the state the run stands in without stepping it on — the last thing
+  // done to a posed frame, and what puts on the stage the step the player says
+  // it is on rather than the one before it.
+  function holdFrame() {
+    current.instance.draw();
+    if (current.instance.upload) current.instance.upload();
+    shown = stood;
+    offerFrame();
+  }
+
+  // The strikes the walk was given, put back in at the step they landed on —
+  // before that step is drawn, which is where they landed the first time.
+  function restrike(step) {
+    for (var i = 0; i < strikes.length; i++) {
+      if (strikes[i].step === step) scene.detonate(strikes[i].spot || undefined);
+    }
+  }
+
+  function walkTo(target) {
+    seedWalk();
+    restart();
+    for (var i = 0; i < target; i++) {
+      restrike(i);
+      advance();
+    }
+    restrike(target);
+    holdFrame();
+    mark = target;
+    stale = false;
+  }
+
+  function takeRun() {
+    if (held) return;
+    held = true;
+    // a walk is the run the film holds, and a film is made with the pointer out
+    // of it: an animation that follows the mouse would otherwise hold a
+    // different frame for every place the mouse happened to be resting
+    pointer.inside = false;
+    strikes.length = 0;
+    walkTo(0);
+  }
+
+  function freeRun() {
+    if (!held) return;
+    held = false;
+    strikes.length = 0;
+    giveSourceBack();
+    // The clock draws the state the run stands in and then steps on, and the
+    // player has already drawn this one. The run is stepped past it before the
+    // clock takes over, so the step it takes shows the next frame rather than
+    // this one over again.
+    if (shown === stood) { scene.advance(); stood += 1; }
+    carried = 0;
+    lastTick = 0;
+  }
+
+  // Walk to a step. Forwards is the animation's own business, one step at a
+  // time, exactly as the clock would have stepped it; backwards is the run
+  // walked again from its start.
+  function walkOn() {
+    scene.advance();
+    stood += 1;
+    mark += 1;
+    restrike(mark);
+    holdFrame();
+  }
+
+  function seek(target) {
+    var want = target > 0 ? Math.round(target) : 0;
+    if (!held) takeRun();
+    if (want < mark || stale) { walkTo(want); return mark; }
+    while (mark < want) walkOn();
+    return mark;
+  }
+
   // Redone from scratch when the stage size changes: new buffers, a new
   // backdrop and a new texture at the new size.
   function rebuild() {
@@ -351,17 +495,28 @@ export async function startAnimation(spec, stageEl) {
     var delta = lastTick ? now - lastTick : 1000 / 60;
     lastTick = now;
 
-    var rate = cadence();
-    var step = 1 / rate;
-    var wait = Math.max(1, Math.round(replayGap() * rate));
-    carried += clamp(delta / 1000, 0, 0.1);
-    var guard = 0;
-    while (carried >= step && guard < 6) {
-      carried -= step;
-      guard += 1;
-      sinceRun += 1;
-      if (replayGap() > 0 && sinceRun >= wait) detonate(null);
-      advance();
+    if (held) {
+      // Nothing is carried while the player has the run, so the time it spent
+      // held is not paid back in a burst of steps when the clock takes it on
+      // again, and no automatic replay lands in the middle of a walk. The frame
+      // is only walked again where something has made it out of date, and once
+      // a frame at most, so a slider being dragged does not walk the run once
+      // per notch it passes.
+      carried = 0;
+      if (stale) walkTo(mark);
+    } else {
+      var rate = cadence();
+      var step = 1 / rate;
+      var wait = Math.max(1, Math.round(replayGap() * rate));
+      carried += clamp(delta / 1000, 0, 0.1);
+      var guard = 0;
+      while (carried >= step && guard < 6) {
+        carried -= step;
+        guard += 1;
+        sinceRun += 1;
+        if (replayGap() > 0 && sinceRun >= wait) detonate(null);
+        advance();
+      }
     }
 
     // the step above only happens at the animation's cadence; this happens
@@ -432,6 +587,10 @@ export async function startAnimation(spec, stageEl) {
     // a knob has moved
     apply: function () {
       if (stageWidth() !== width || stageHeight() !== height) rebuild();
+      // the frame a held run is showing was walked to under the old knobs, so
+      // it is walked to again under the new ones — which is also how a knob
+      // that only takes hold on the next run takes hold on a walk
+      if (held) stale = true;
       document.dispatchEvent(new CustomEvent("pixels:apply", { detail: { animation: spec.id } }));
     },
 
@@ -454,6 +613,7 @@ export async function startAnimation(spec, stageEl) {
       METRICS.uploadAvg = -1;
       restart();
       advance();
+      if (held) stale = true;
       return current.id;
     },
 
@@ -478,11 +638,33 @@ export async function startAnimation(spec, stageEl) {
     // a whole run, one canvas per step, handed over as they are drawn
     record: record,
 
+    // The run walked by hand instead of by the clock — what the player under
+    // the stage presses, and the way anything else can put a named step on the
+    // stage and leave it there.
+    player: {
+      held: function () { return held; },
+      // the step the stage is showing: the one being held, or the last one the
+      // clock drew
+      at: function () { return held ? mark : shown; },
+      // how long a whole run is, when the animation declares one
+      length: filmSteps,
+      hold: takeRun,
+      release: freeRun,
+      step: function (by) {
+        if (!held) takeRun();
+        return seek(mark + by);
+      },
+      seek: seek
+    },
+
     // Put the animation away: stop its clock, hand back its drawing paths and
     // its surface, and leave the stage empty for the next one.
     dispose: function () {
       if (!running) return;
       running = false;
+      // a borrowed random source outlives the animation that borrowed it, so it
+      // goes back before anything else is taken down
+      giveSourceBack();
       unfit();
       stageEl.style.aspectRatio = "";
       stageEl.removeEventListener("pointerdown", onPointer);
@@ -506,9 +688,10 @@ export async function startAnimation(spec, stageEl) {
   showMode();
 
   function onMove(event) {
-    // the clock is standing still while a poster or a film is being made, and a
-    // frame that moved with the mouse would not be the frame anyone else drew
-    if (posing) return;
+    // the clock is standing still while a poster or a film is being made, or
+    // while the player is holding a run, and a frame that moved with the mouse
+    // would not be the frame anyone else drew
+    if (posing || held) return;
     var rect = stageEl.getBoundingClientRect();
     pointer.x = (event.clientX - rect.left) / rect.width * width;
     pointer.y = (event.clientY - rect.top) / rect.height * height;

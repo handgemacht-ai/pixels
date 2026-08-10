@@ -211,6 +211,51 @@ main {
 }
 #error[hidden] { display: none; }
 
+/* The player sits between the stage and the line that describes it, in the
+   panel's own voice: small mono controls, the same border and the same dim ink
+   as the drawing-path switch, because it is the same kind of thing. It wraps
+   rather than shrinking, so the keys it names can drop to a line of their own
+   on a narrow screen instead of squeezing the buttons. */
+.player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 7px 14px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.player button {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: var(--panel-head);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  /* laid out rather than padded into shape, so a button carrying an arrowhead
+     is exactly as tall as the one carrying a word */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  min-width: 40px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+#player-hold { min-width: 62px; }
+#player-back, #player-on { font-size: 13px; }
+.player button:hover { color: var(--ink); border-color: #3a3a48; }
+.player button:active { transform: translateY(1px); }
+.player .frame {
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.player .keys { margin-left: auto; color: var(--dim); font-size: 10px; letter-spacing: 0.06em; }
+
 .legend {
   min-height: 26px;
   line-height: 1.55;
