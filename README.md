@@ -88,8 +88,15 @@ about either animation is written into the switcher; it shows what it was handed
 Under the stage is a player: pause, one step back, one step on, and the step that is on the stage —
 `step 7 / 48`, where the second number is how long a whole run is, the same length the GIF button
 films. The space bar holds the run and lets it go again, the left and right arrows walk it, and each
-button names its key. The keys do nothing while something is being typed into, so the arrows still
-nudge whichever control has the focus.
+button names its key.
+
+The keys are the preview's rather than the page's: they answer while the pointer is resting on the
+preview panel or something inside it has the focus, and nowhere else. On a page taller than the
+window the space bar scrolls, and a player that took that away everywhere would cost every visitor
+something to buy a hold only somebody inspecting a run wants. The arrows are scoped the same way for
+the same reason and for one more: they move other things on this page, and one rule about where the
+keys work is easier to learn than one rule per key. The keys are ignored while something is being
+typed into wherever they are pressed, so the arrows still nudge whichever control has the focus.
 
 Holding a run takes it off the clock and starts it again from the top, on the seeded run the film is
 made from: the frame the player holds at step n is the frame the GIF holds at step n, and one press

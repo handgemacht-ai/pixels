@@ -5,7 +5,8 @@
 // transport — there is nothing to scrub through, only the frame you are on and
 // the two either side of it — so it is three small buttons and a number.
 //
-// The keys are the ones a player has. They are ignored while something is being
+// The keys are the ones a player has, and they only answer while the preview is
+// what they are plainly aimed at. They are ignored while something is being
 // typed into, so the arrows still nudge whichever slider has the focus.
 
 // Held or running, kept across a change of animation: somebody walking one run
@@ -26,6 +27,10 @@ export function initPlayer(spec, api) {
   var onButton = document.getElementById("player-on");
   var readout = document.getElementById("player-frame");
   if (!row || !holdButton || !backButton || !onButton || !readout) return function () {};
+
+  // The panel the stage and the player share: what the keys below are scoped to.
+  var panel = row.parentElement || row;
+  var over = false;
 
   var going = true;
   var said = "";
@@ -74,9 +79,31 @@ export function initPlayer(spec, api) {
   function back() { walk(-1); }
   function on() { walk(1); }
 
+  function entered() { over = true; }
+  function left() { over = false; }
+
+  // Whether a press is the player's to answer. The space bar scrolls a page
+  // taller than the window, and a page-wide claim on it would take that away
+  // from every visitor to buy a hold nobody asked for — so the keys only carry
+  // while the preview is what they are being aimed at: the pointer resting on
+  // the panel, or something inside it holding the focus. Anywhere else the
+  // press stays the page's, and space scrolls as it always did.
+  //
+  // The arrows are scoped the same way rather than left global, although they
+  // scroll less often. A player whose space bar works in one place and whose
+  // arrows work everywhere is two rules to learn instead of one, and the arrows
+  // move other things on this page — a slider, a switcher — that have at least
+  // as good a claim on them as a run being walked does.
+  function aimed(target) {
+    if (over) return true;
+    if (target && panel.contains(target)) return true;
+    return panel.contains(document.activeElement);
+  }
+
   function onKey(event) {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
     if (typing(event.target)) return;
+    if (!aimed(event.target)) return;
     if (event.key === " " || event.key === "Spacebar") {
       // a button with the focus is pressed by the space bar already, and doing
       // it twice would put the run straight back where it was
@@ -94,6 +121,8 @@ export function initPlayer(spec, api) {
   holdButton.addEventListener("click", toggle);
   backButton.addEventListener("click", back);
   onButton.addEventListener("click", on);
+  panel.addEventListener("pointerenter", entered);
+  panel.addEventListener("pointerleave", left);
   document.addEventListener("keydown", onKey);
 
   if (wanted) api.player.hold();
@@ -105,6 +134,8 @@ export function initPlayer(spec, api) {
     holdButton.removeEventListener("click", toggle);
     backButton.removeEventListener("click", back);
     onButton.removeEventListener("click", on);
+    panel.removeEventListener("pointerenter", entered);
+    panel.removeEventListener("pointerleave", left);
     document.removeEventListener("keydown", onKey);
     readout.textContent = "";
   };
