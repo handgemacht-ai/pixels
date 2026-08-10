@@ -34,7 +34,7 @@ import { VIEW_W, VIEW_H, S, HORIZON, P } from "./state.js";
 import { AIR, ROAD, LANE, EDGE, FARROAD, SHADOW } from "./palette.js";
 import { clamp } from "./maths.js";
 import { lux, ruby } from "./light.js";
-import { zAt, rowOf, ppm, xOf, uOf } from "./camera.js";
+import { zAt, rowOf, ppm, xOf, uOf, VP_X } from "./camera.js";
 
 // What lands on the road directly under a lamp at the declared settings: a
 // shade over saturation, so the few pixels under the head are pinned at the
@@ -68,8 +68,25 @@ var CITY_FLOOR = 0.13;
 // under a row, so a lamp there is no longer a lamp — it is a contribution to a
 // smear at the vanishing point, which is exactly what the plate shows and
 // exactly what a train of point sources cannot draw without aliasing.
-var SMEAR_ROWS = 7;
-var SMEAR_GAIN = 0.55;
+var SMEAR_ROWS = 9;
+var SMEAR_GAIN = 0.75;
+
+// And how far above the horizon it is allowed to reach. Two rows, and on those
+// two it may land on nothing at all — which is the only place in the picture
+// where light is added to air. The argument for it is the plate: a lamp line
+// running to a vanishing point does not stop at the ground, it puts a haze in
+// the air over itself, and a smear that stopped dead on the horizon row read as
+// the far end of nothing.
+//
+// Above the horizon it is a hump rather than a band, and that is not a taste
+// decision. Below the horizon the road fills the width, so a row of it is lit
+// all the way across and looks it. Above the horizon there is no road — there
+// is a lamp line converging on one column — so haze the full width of the frame
+// draws a bar across the picture and cuts it in half, which is exactly what it
+// did the first time. Half a frame wide, centred on the vanishing column, is
+// the shape the thing casting it actually has.
+var SMEAR_ABOVE = 2;
+var SMEAR_HALF = 0.45;
 
 // A tail lamp sits about a metre and a quarter off the road and throws a pool
 // of its own behind the car. It is quoted high because it has to win the red
@@ -271,16 +288,25 @@ export function addCityFloor(mat) {
 
 export function addHorizonSmear(mat) {
   var rows = Math.max(2, Math.round(SMEAR_ROWS * S));
+  var above = Math.max(1, Math.round(SMEAR_ABOVE * S));
   var gain = SMEAR_GAIN * clamp(P.coneReach, 0.2, 3);
   var last = Math.min(VIEW_H, HORIZON + rows);
-  var y, d, v, row, x, i;
-  for (y = HORIZON + 1; y < last; y++) {
-    d = y - HORIZON;
+  var first = Math.max(0, HORIZON - above + 1);
+  var half = SMEAR_HALF * VIEW_W;
+  var y, d, v, row, x, i, s;
+  for (y = first; y < last; y++) {
+    d = Math.abs(y - HORIZON);
     v = gain / (1 + d * 0.35);
     row = y * VIEW_W;
     for (x = 0; x < VIEW_W; x++) {
       i = row + x;
-      if (mat[i] !== AIR) lux[i] += v;
+      if (y > HORIZON) {
+        if (mat[i] !== AIR) lux[i] += v;
+        continue;
+      }
+      s = (x - VP_X) / half;
+      if (s <= -1 || s >= 1) continue;
+      lux[i] += v * 0.5 * (1 + Math.cos(s * Math.PI));
     }
   }
 }
