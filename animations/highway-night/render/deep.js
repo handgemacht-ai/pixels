@@ -30,6 +30,7 @@ import { C, AIR } from "../palette.js";
 import { clearLight, addHaze, addBloom } from "../light.js";
 import { paintCarriageway } from "../carriageway.js";
 import { masts, paintMast, mastFlare } from "../masts.js";
+import { gantries, paintGantry, posts, paintPost } from "../roadside.js";
 import { oncoming, approachBlooms, paintApproach } from "../approach.js";
 import {
   heroBox, brakeZ, paintHero, paintTailLamps, tailBlooms
@@ -54,9 +55,14 @@ var BEACON_ON = 3;
 
 // ------------------------- the material pass -------------------------
 
-function materials(step, poles, box) {
+function materials(step, poles, arches, studs, box) {
   var i;
   paintCarriageway(slab, step);
+  // the furniture before the lamps: where a gantry and a mast overlap they are
+  // the same steel, so the order between them is only ever about which of the
+  // two the sorting has to be right for, and it is the masts
+  for (i = 0; i < arches.length; i++) paintGantry(slab, arches[i]);
+  for (i = 0; i < studs.length; i++) paintPost(slab, studs[i]);
   for (i = 0; i < poles.length; i++) paintMast(slab, poles[i]);
   paintHero(slab, box);
 }
@@ -100,7 +106,7 @@ function lights(state, poles, cars, box, pairs) {
 
 // ---------------------------- the emitters ---------------------------
 
-function emitters(state, poles, cars, box) {
+function emitters(state, poles, arches, studs, cars, box) {
   var i, k, p, lights, turn, since;
 
   // the beacons first, because they are the furthest thing on the stage and
@@ -117,6 +123,20 @@ function emitters(state, poles, cars, box) {
     for (k = 0; k < p.wide; k++) put(p.lampX + k, p.lampY, C.hot);
   }
 
+  // the marker lamps under each gantry beam, and the red catch on top of every
+  // post far enough away to have any steel under it. Neither throws light: a
+  // marker is a lamp seen head on rather than a lamp lighting anything, and a
+  // delineator is not a light at all, it is the hero's own headlamps coming
+  // back off a reflector the size of a postcard
+  for (i = 0; i < arches.length; i++) {
+    for (k = 0; k < arches[i].marks.length; k++) {
+      put(arches[i].marks[k], Math.round(arches[i].beamY + arches[i].thick), C.hot);
+    }
+  }
+  for (i = 0; i < studs.length; i++) {
+    if (studs[i].lit) put(studs[i].x, studs[i].y, C.tail);
+  }
+
   paintApproach(put, cars, P.exposure);
   paintTailLamps(put, box, state.flash);
   paintNeon(put, litSigns(state, 0, FLARES));
@@ -126,6 +146,8 @@ export function drawFrame(scene) {
   var state = scene.state;
   var step = state.step;
   var poles = masts(step);
+  var arches = gantries(step);
+  var studs = posts(step);
   var cars = oncoming(step);
   var box = heroBox();
   var pairs = 0;
@@ -141,7 +163,7 @@ export function drawFrame(scene) {
   mat.fill(AIR);
   clearLight();
 
-  materials(step, poles, box);
+  materials(step, poles, arches, studs, box);
   lights(state, poles, cars, box, pairs);
   // the mottle is on and it is taken in metres: a patch of older surfacing is a
   // patch of the road, so it is sampled where the pixel is on the road rather
@@ -151,7 +173,7 @@ export function drawFrame(scene) {
   // clean contour between two saturated ramps is the one join in this picture
   // the eye can catch
   resolve(step, P.coneTexture, Math.round(P.lampWarmth), true, true, true);
-  emitters(state, poles, cars, box);
+  emitters(state, poles, arches, studs, cars, box);
 }
 
 export function createJavascriptBackend(ctx) {
