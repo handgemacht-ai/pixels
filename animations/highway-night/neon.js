@@ -17,7 +17,7 @@
 // pink sign, which is exactly the mistake the material pass exists to prevent.
 
 import { VIEW_W, S, LOOP, P } from "./state.js";
-import { C, NEON } from "./palette.js";
+import { C, NEON, NEON_DIM } from "./palette.js";
 import { clamp, hash01, bayer4, frac } from "./maths.js";
 import { housings } from "./skyline.js";
 import { STRUCK_SIGN } from "./world.js";
@@ -135,7 +135,7 @@ export function litSigns(state, hueLock, flares) {
   var lock = Math.round(hueLock || 0);
   var picks = Math.round(flares || 0);
   var out = [];
-  var i, sign, lit, on, wake;
+  var i, sign, lit, on, wake, pick;
   for (i = 0; i < all.length; i++) {
     sign = all[i];
     lit = order[i] < SIGNS;
@@ -147,9 +147,11 @@ export function litSigns(state, hueLock, flares) {
       on = hash01(sign.cell, wake, FLICKER_SEED + 7) > state.wake * 0.55;
     }
     if (!on) continue;
+    pick = lock > 0 ? (lock - 1) % NEON.length : sign.hue % NEON.length;
     out.push({
       sign: sign,
-      hue: lock > 0 ? NEON[(lock - 1) % NEON.length] : NEON[sign.hue % NEON.length],
+      hue: NEON[pick],
+      glow: NEON_DIM[pick],
       flare: ranked.indexOf(i) < picks
     });
   }
@@ -187,18 +189,18 @@ function archetype(put, s, colour) {
   }
 }
 
-// One ring of the sign's own colour around it, laid down on the ordered dither
-// so that only part of the ring lands. There is no dimmer pink in the palette
-// to make a halo out of, and there must not be: a blend would put a thirtieth
-// colour on the stage and break the table the GIF is written from. Part of a
-// ring of the full colour is what the palette can actually say, and at this
-// size it reads as glow rather than as a dotted line.
+// The rings around a tube. They are drawn in the sign's dim companion, not in
+// the tube colour: the four dim hues are in the table for exactly this, and
+// spending four colours on them buys the one thing a halo of the full colour
+// could never buy — the tube itself staying the brightest thing in its own
+// glow. A sign lit in its own pink and haloed in the same pink is a pink
+// rectangle with a ragged edge; lit in pink over a dark pink it is a light.
 //
-// `ring` is how far out from the tube this one sits. The first lies against
-// the sign and takes half the dither; the second lies outside that one and
-// takes a quarter, so a pair of them thins outwards and reads as a falloff
-// rather than as a two-pixel border.
-var HALO_DITHER = [0.5, 0.25];
+// `ring` is how far out from the tube this one sits. The first lies against the
+// sign and lands whole, which is what makes the tube read as sitting in
+// something rather than as being outlined; the two outside it take half the
+// dither and a quarter, so the glow thins outwards instead of stopping.
+var HALO_DITHER = [1, 0.5, 0.25];
 
 function halo(put, s, colour, ring) {
   var u = Math.max(1, Math.round(S));
@@ -235,8 +237,9 @@ function flare(put, s) {
 
 // The signs, at whatever strength the intensity knob is asking for. Its three
 // bands are three amounts of glow around the same tube — the tube on its own,
-// the tube with a ring around it, and a second, thinner ring outside that,
-// which is as far as a fixed palette can carry a falloff outwards.
+// the tube standing in a solid ring of its dim companion, and that ring carried
+// two pixels further out on the dither, which is as far as a fixed palette can
+// carry a falloff outwards.
 //
 // The cross flares are not on that ladder. How many signs are big enough to be
 // worth one is a question about the skyline, not about how hard the tubes are
@@ -251,8 +254,11 @@ export function paintNeon(put, list) {
     item = list[i];
     // outwards in, so the ring that reads as glow is under the one that reads
     // as the tube
-    if (bands >= 3) halo(put, item.sign, item.hue, 2);
-    if (bands >= 2) halo(put, item.sign, item.hue, 1);
+    if (bands >= 3) {
+      halo(put, item.sign, item.glow, 3);
+      halo(put, item.sign, item.glow, 2);
+    }
+    if (bands >= 2) halo(put, item.sign, item.glow, 1);
     archetype(put, item.sign, item.hue);
     if (item.flare) flare(put, item.sign);
   }

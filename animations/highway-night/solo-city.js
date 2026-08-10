@@ -170,9 +170,9 @@ export default defineAnimation({
 
     { group: "neon", key: "signs", label: "signs lit", default: 18,
       min: 0, max: 24, step: 1, applies: "next" },
-    // How much glow is around a tube: none, one ring, or a second and thinner
-    // one outside it. It is not how many signs are lit and it is not how many
-    // of them flare — those are the two knobs either side of it — so all three
+    // How much glow is around a tube: none, a solid ring of its dim companion,
+    // or that ring carried further out on the dither. It is not how many signs
+    // are lit and it is not how many of them flare — those are the two knobs either side of it — so all three
     // still say something wherever the other two are standing.
     { group: "neon", key: "neonIntensity", label: "neon", default: 2,
       min: 0, max: 3, step: 1, unit: "bands", applies: "live" },
