@@ -110,6 +110,23 @@ export function darkSignNear(cell) {
   return cell;
 }
 
+// Which of the four tubes a lit sign burns in.
+//
+// Left to the cell's own hash this is a draw out of four with replacement, and
+// a draw of nine came up without a single pink one: three colours on the
+// skyline and the fourth nowhere in a picture whose table spends eight of its
+// forty colours on the four. So the first four signs to come on take one hue
+// each, and everything lit after them keeps the hue its cell hashed to.
+//
+// Which four those are is the ranking the knob lights them in, and that
+// ranking is not re-cut by the knob, by the flicker or by the step. So a sign
+// keeps its colour for the whole loop and at every setting of the knob, and
+// from four signs upwards every colour in the table is somewhere on the
+// skyline.
+function hueOf(i, sign) {
+  return order[i] < NEON.length ? order[i] : sign.hue % NEON.length;
+}
+
 // A strike names one sign, or — where a stage strikes several at once — a
 // handful of them. Both arrive as `struck`, and neither is a special case
 // worth a second field on the state.
@@ -123,7 +140,7 @@ function isStruck(struck, cell) {
 // function of the step number: which cells are in the lit set at all, and then
 // which of those the flicker has dropped for this eighth of the loop.
 //
-// `hueLock` at zero leaves every sign the hue its cell hashed to; one to four
+// `hueLock` at zero leaves every sign the hue hueOf() gives it; one to four
 // forces the whole skyline onto a single tube colour, which is the only way to
 // see what one of the four is actually doing against a night sky. `flares` is
 // how many of the largest housings get the cross — three on the assembled
@@ -147,7 +164,7 @@ export function litSigns(state, hueLock, flares) {
       on = hash01(sign.cell, wake, FLICKER_SEED + 7) > state.wake * 0.55;
     }
     if (!on) continue;
-    pick = lock > 0 ? (lock - 1) % NEON.length : sign.hue % NEON.length;
+    pick = lock > 0 ? (lock - 1) % NEON.length : hueOf(i, sign);
     out.push({
       sign: sign,
       hue: NEON[pick],
