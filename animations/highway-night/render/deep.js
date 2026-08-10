@@ -143,14 +143,14 @@ export function drawFrame(scene) {
 
   materials(step, poles, box);
   lights(state, poles, cars, box, pairs);
-  // no mottle: the patch grid is scrolled sideways by a pixels-per-step that
-  // only an elevation has, and a fixed grid laid over a road that recedes
-  // would be a texture standing still on a moving surface
+  // the mottle is on and it is taken in metres: a patch of older surfacing is a
+  // patch of the road, so it is sampled where the pixel is on the road rather
+  // than where it is on the screen, and it scrolls because the road does
   // the red pool's own edge is dithered here and not in the elevation: down the
   // road it is a circle laid on open tarmac with both sides of it lit, and a
   // clean contour between two saturated ramps is the one join in this picture
   // the eye can catch
-  resolve(step, P.coneTexture, Math.round(P.lampWarmth), false, true);
+  resolve(step, P.coneTexture, Math.round(P.lampWarmth), true, true, true);
   emitters(state, poles, cars, box);
 }
 
