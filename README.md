@@ -1,3 +1,14 @@
+---
+title: pixels — a platform for procedural pixel-art animations
+type: reference
+summary: The pixels rig — a static page that builds itself around each animation's registration, and the four animations it carries; running, extending, walking and filming them, and deploying the site.
+read_when: adding an animation to pixels, walking or filming a run, or deploying the site
+owner: pixels
+status: current
+tags: [architecture, deploy]
+last_verified: 2026-09-06
+---
+
 # pixels
 
 A small platform for procedural pixel-art animations, and the animations themselves. Each

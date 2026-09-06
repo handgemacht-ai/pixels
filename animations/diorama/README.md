@@ -1,3 +1,13 @@
+---
+title: Diorama — one orbiting lamp over a ruined tower
+type: reference
+summary: animations/diorama — a ruined stone tower under one orbiting lamp, the first scene lit by the shared light module; the model as solid(X, Y, Z), the four sweeps of a frame, the pipeline panel, and the knobs that drive them.
+owner: pixels
+status: current
+last_verified: 2026-09-06
+tags: [architecture]
+---
+
 # Diorama
 
 A ruined stone tower on a rock plinth, seen three quarters from above in a dark void, with one warm

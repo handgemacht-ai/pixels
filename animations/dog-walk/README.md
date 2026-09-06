@@ -1,3 +1,13 @@
+---
+title: Dog walk — a mastiff solved from a skeleton
+type: reference
+summary: animations/dog-walk — a pixel-art mastiff whose walk is solved, not animated: the gait, the two-bone rig, the depth-banded drawing, and Muybridge plate 706 held beside it.
+owner: pixels
+status: current
+last_verified: 2026-09-06
+tags: [architecture]
+---
+
 # Dog walk
 
 A pixel-art mastiff with a skeleton inside it. Nothing about the walk is drawn, keyframed or

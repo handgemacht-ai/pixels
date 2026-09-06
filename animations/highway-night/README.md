@@ -1,3 +1,13 @@
+---
+title: Highway night — a lit corridor, from two places to stand
+type: reference
+summary: animations/highway-night — a car driving a lit corridor at night, drawn as six stages: two whole-road assemblies and four solos; the ground ladder, the camera, the loop-closed lattice, the forty-colour palette, and what a strike does in each picture.
+owner: pixels
+status: current
+last_verified: 2026-09-06
+tags: [architecture]
+---
+
 # Highway night
 
 A car driving through a lit corridor at night, drawn twice from the same measurements: once
@@ -137,6 +147,27 @@ rail band is four pixels and cannot spare one.
 
 The ladder is pinned to the stage width, not the height, so the square stage setting adds sky and
 never touches the road.
+
+## The dirty air over the city
+
+The sky above the ladder is three tones rather than one, and where each pair of them meets the two
+are stippled together over eleven rows of the ordered dither. A gradient drawn as a colour a row
+would want sixty of them and no colour table is going to hold that; the join spends the arrangement
+of two tones the palette already has, and at this resolution the eye reads the arrangement as the
+colour in between.
+
+Standing on the horizon is a layer of dirty air the city is lighting from underneath, and it is a
+temperature rather than a colour: sodium where the light is coming from, violet a few rows up
+where it has scattered, and the last of the glow at the top of it where it gives out into the sky.
+The temperature is fixed and the depth is what varies across the frame, not the other way about,
+because air does not stop at the edge of a city and it does not go cold at the edge of one either.
+Every column climbs the same three steps towards the horizon; out past the towers it starts them
+lower down, and so only gets through the warm end of them.
+
+The layer goes down before the skyline and not after it. Laid over the towers its brightest rows
+dissolve the three depths into one wash, and the plate settles it as well: the buildings on it
+stand as silhouettes in the glow rather than through it, and what carries the horizon in front of
+them is the lamp line's own smear.
 
 ## The camera
 
@@ -327,7 +358,14 @@ how big.
   much again in the lane to the right going the same way, plus how long a trail is drawn behind
   each of them.
 - **neon** — how many of the sign housings are lit, how far up their ramp they burn, and how much
-  they flicker.
+  they flicker. Which hue a lit sign burns in is not left to a draw out of four with replacement:
+  the first four signs to come on take one hue each, and everything lit after them keeps the hue
+  its cell hashed to, so from four signs upwards every colour the table spends on the four is
+  somewhere on the skyline. The ranking that lights the first four is not re-cut by the knob, by
+  the flicker or by the step, so a sign keeps its colour for the whole loop and at every setting.
+  The skyline solo adds two of its own: a tube-colour lock that puts the whole skyline on a single
+  hue, which is the only way to see what one of the four is actually doing against a night sky, and
+  a dial for how many of the largest housings carry the cross flare.
 - **car** — how far the headlight beams reach and how wide they open. The car itself has nothing
   else to argue about: it rides level, because a car at motorway speed on a laid carriageway does,
   and it is the one module in the folder that reads no knob at all.
@@ -356,6 +394,12 @@ The cone texture knob is the one that shows what the palette is doing. There are
 and no blending between them, so a light value that falls between two steps of a ramp has
 to be carried some other way: an ordered dither stipples the two steps together, a scanline dither
 does it on alternate rows, and hard bands throw the remainder away and show the banding plain.
+And the forty are not a suggestion on the stage either: the palette object is handed to the GIF
+writer as the file's own colour table, so a colour mixed at drawing time never becomes an entry
+of its own — a table that grows as the frames arrive, up to 256, is what an animation that
+declares no palette gets, and this one declares. A colour that turns up outside them is counted
+rather than kept — the page draws it as the first entry, and the command-line tool exits with
+the count rather than pretending nothing happened.
 
 ## What a strike does
 

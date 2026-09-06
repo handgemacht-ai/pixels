@@ -1,3 +1,13 @@
+---
+title: Fire explosion — eight colours, drawn twice over
+type: reference
+summary: animations/fire-explosion — a procedural pixel-art explosion in its sprite sheet's eight colours, produced identically by a JavaScript path and a WebGL one; the fifty-step arc, the depth-cut bands, and the fraying.
+owner: pixels
+status: current
+last_verified: 2026-09-06
+tags: [architecture]
+---
+
 # Fire explosion
 
 A procedural pixel-art explosion. Everything is generated at runtime: the stage is 160 × 100
